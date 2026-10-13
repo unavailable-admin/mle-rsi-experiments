@@ -52,7 +52,7 @@ class GeminiTransport:
         write(directory/'request.json',payload)
         request_provider_id=None
         try:
-            async with httpx.AsyncClient(timeout=600,headers={'Authorization':'Bearer '+key}) as client:
+            async with httpx.AsyncClient(timeout=600,trust_env=self.spec['model'].get('trust_env',True),headers={'Authorization':'Bearer '+key}) as client:
                 response=await client.post(base+'/v1beta/models/'+config.model+':generateContent',json=payload)
                 request_provider_id=response.headers.get('x-request-id') or response.headers.get('request-id')
                 response.raise_for_status()

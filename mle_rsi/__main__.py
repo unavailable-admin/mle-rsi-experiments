@@ -30,6 +30,19 @@ def preflight(spec):
     finally:client.close()
     checks['gpu_pool']=execution['gpu_pool']
     checks['credentials_configured']=bool(os.environ.get(spec['model']['api_key_env'])) or Path(spec['model']['credential_file']).is_file()
+    # Authenticated read-only connectivity check; no generation or billing call.
+    import httpx
+    from .provider import load_key
+    load_key(spec)
+    with httpx.Client(timeout=30,trust_env=spec['model'].get('trust_env',True)) as transport:
+        response=transport.get(spec['model']['base_url'].rstrip('/')+'/v1/models',
+            headers={'Authorization':'Bearer '+os.environ[spec['model']['api_key_env']]})
+        response.raise_for_status()
+        ids={row['id'] for row in response.json()['data']}
+        if spec['model']['name'] not in ids:
+            raise RuntimeError('Configured model absent from provider model list')
+    checks['authenticated_model_list']=True
+    checks['generation_api_tested']=False
     checks['paid_api_called']=False
     print(json.dumps(checks,indent=2))
     return checks

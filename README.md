@@ -59,3 +59,7 @@ cd /mnt/afs/yangsen1/projects/mle-rsi-experiments
 ```
 
 每个 run 保存 `frozen-config.json`、`budget.json`、`campaigns/`、`api/`、`outcomes/`、`policy-freeze.json`、`frozen-policy.py` 和 `summary.json`。`status` 的分组完成数指最终评估完成数，开发进度见后面的逐任务状态。页面用于观察，逐笔预算以 `budget.json` 为准。
+
+## 代理连接修复（2026-10-13）
+
+本机 TeamO 连接设置 `model.trust_env=false`，避免继承不可用的 SSH 会话 HTTP 代理；这是该服务的显式配置，不改变系统代理。preflight 现在会认证读取模型列表并确认模型存在，仍不会发起付费生成。开发过程逐题打印完成/停止原因；遇到未决请求立即停止后续任务。pilot-001 的两次 ProxyError 发生在 HTTPS 代理隧道建立阶段，训练尚未启动。恢复目录 pilot-002 保留旧记录的来源及核对说明，正式开发仍由用户启动。

@@ -145,7 +145,13 @@ async def develop(root):
     results=[]
     for task in spec['development_tasks']:
         print('DEVELOP',task,flush=True)
-        results.append(await run_task(root,task,'development'))
+        result=await run_task(root,task,'development')
+        results.append(result)
+        print('RESULT',task,result['state'],'rounds='+str(result['completed_rounds']),result.get('reason',''),flush=True)
+        api_rows=read(root/'budget.json').get('api',{}).values() if (root/'budget.json').exists() else []
+        if any(r['state']=='uncertain' for r in api_rows):
+            print('STOP: unresolved API outcome; later tasks were not started. Inspect budget.json.',flush=True)
+            break
     write(Path(root)/'development.json',results)
     return results
 
