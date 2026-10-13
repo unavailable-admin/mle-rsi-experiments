@@ -1,0 +1,6 @@
+[submodule "third_party/dream-rsi"]
+	path = third_party/dream-rsi
+	url = https://github.com/3365538768/wsl-dream-rsi.git
+[submodule "third_party/rsi-eval"]
+	path = third_party/rsi-eval
+	url = https://github.com/unavailable-admin/rsi-eval.git

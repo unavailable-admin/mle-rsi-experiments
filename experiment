@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+exec "${MLE_RSI_PYTHON:-/mnt/afs/yangsen1/envs/dream-rsi-mle/bin/python}" -m mle_rsi "$@"

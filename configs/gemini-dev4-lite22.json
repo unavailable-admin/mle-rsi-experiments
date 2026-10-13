@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "source_base": "3ccf88a209604795f75ec2e0f2f40352dc80b620",
+  "model": {
+    "name": "gemini-3.1-pro-preview",
+    "base_url": "https://api.teamorouter.cn",
+    "api_key_env": "RSI_GEMINI_API_KEY",
+    "credential_file": "/mnt/afs/yangsen1/teamo/credentials.txt",
+    "reasoning_effort": "high",
+    "discovery_output_tokens": 16384,
+    "developer_output_tokens": 8192
+  },
+  "development_tasks": ["leaf-classification", "spooky-author-identification", "denoising-dirty-documents", "new-york-city-taxi-fare-prediction"],
+  "budget": {
+    "api_usd_per_task": 5,
+    "development_api_usd_per_task": 2.5,
+    "gpu_seconds_per_task": 7200,
+    "execution_seconds_per_task": 7200,
+    "development_execution_seconds_per_task": 2400
+  },
+  "search": {
+    "development_rounds": 2,
+    "batches_per_round": 2,
+    "workers": 2,
+    "policy_versions_per_round": 2,
+    "replay_steps": 16,
+    "replay_scenarios": 4,
+    "final_batches": 4
+  },
+  "execution": {
+    "candidate_timeout_seconds": 900,
+    "python_environment": "/mnt/afs/yangsen1/envs/mle-gemini-four",
+    "image": "sha256:859eb2ba86a41e3a360e9d726a183147a20faa990bfd5f7f3e4f4372b375f00f",
+    "pretrained_models": "/mnt/afs/yangsen1/runs/mlevolve-gemini-four-v3/models",
+    "cpu_ids": [64,65,66,67,68,69,70,71],
+    "gpu_pool": [4,5,6,7],
+    "gpu_tasks": ["aerial-cactus-identification","aptos2019-blindness-detection","denoising-dirty-documents","dog-breed-identification","dogs-vs-cats-redux-kernels-edition","histopathologic-cancer-detection","plant-pathology-2020-fgvc7","ranzcr-clip-catheter-line-classification","siim-isic-melanoma-classification","the-icml-2013-whale-challenge-right-whale-redux"]
+  },
+  "protocol_notes": [
+    "Development runs full online plus offline separately on each of four tasks; pooled public-history replay chooses one task-independent policy for final evaluation.",
+    "Final evaluation fixes policy and disables offline revision; no final private score returns to any search or selection.",
+    "Development and final share each task's API and execution budget. Failed attempts and rejected responses count.",
+    "Public validation scores are candidate-reported; identity and metric are checked, scores are not universally recomputed.",
+    "Single seed pilot. Development4, remaining18, all22 are reported separately. Remaining18 have prior baseline observations and are not pristine blind tests.",
+    "Serial task execution and serial candidate execution, with concurrent generation within each batch; W=2 is not a claim of two simultaneous GPU workers.",
+    "Native v26 cumulative any-node best-first plus virtual replay retained; shortened rounds and no hyperparameter/counterfactual tuning for first bounded pilot."
+  ]
+}
