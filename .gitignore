@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+runs/
+*.egg-info/
+.env
+.env.*
+!.env.example
+*.local.json
+workspace/
+*.log
+*.bundle
+credentials*
