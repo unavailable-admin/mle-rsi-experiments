@@ -27,9 +27,11 @@ class GeminiTransport:
     def __init__(self, root, spec, task, phase, campaign_id):
         self.root,self.spec,self.task,self.phase,self.campaign_id=Path(root),spec,task,phase,campaign_id
         self.budget=Budget(root,spec['budget'])
+        self.gate=asyncio.Lock()
 
     async def __call__(self, config, messages, request_id, role):
-        return await self._call(config,messages,request_id,role)
+        async with self.gate:
+            return await self._call(config,messages,request_id,role)
 
     async def _call(self, config, messages, request_id, role):
         base=self.spec['model']['base_url'].rstrip('/')
@@ -39,12 +41,25 @@ class GeminiTransport:
         payload={'contents':contents,'systemInstruction':{'parts':[{'text':system}]},
                  'generationConfig':{'temperature':1,'maxOutputTokens':config.max_output_tokens,
                                      'thinkingConfig':{'thinkingLevel':'HIGH'}}}
-        raw=json.dumps(payload,ensure_ascii=False).encode()
-        request_hash=hashlib.sha256(raw).hexdigest()
         ident=f'{self.campaign_id}:{request_id}'
         directory=self.root/'api'/self.campaign_id/hashlib.sha256(request_id.encode()).hexdigest()[:24]
-        # Byte-count input upper bound, rates above the published long-context rates.
-        reserve=(len(raw)+8192)*8/1e6+config.max_output_tokens*36/1e6
+        if (directory/'request.json').exists():
+            payload['generationConfig']['maxOutputTokens']=read(directory/'request.json')['generationConfig']['maxOutputTokens']
+        else:
+            with self.budget.state() as ledger:
+                rows=[r for r in ledger['api'].values() if r['task']==self.task]
+                remaining=self.spec['budget']['api_usd_per_task']-sum(r.get('charged_usd',r['reserved_usd']) for r in rows)
+                if self.phase=='development':
+                    remaining=min(remaining,self.spec['budget']['development_api_usd_per_task']-sum(r.get('charged_usd',r['reserved_usd']) for r in rows if r['phase']==self.phase))
+            input_reserve=(len(json.dumps(payload,ensure_ascii=False).encode())+8192)*8/1e6
+            available=int((remaining-input_reserve-.001)*1e6/36)
+            if available<min(config.max_output_tokens,32768):
+                raise LimitReached('Insufficient budget for a complete response (minimum 32768 output-token allowance)')
+            payload['generationConfig']['maxOutputTokens']=min(config.max_output_tokens,available)
+        raw=json.dumps(payload,ensure_ascii=False).encode()
+        request_hash=hashlib.sha256(raw).hexdigest()
+        # Conservative reservation; settle each task's call before starting its next.
+        reserve=(len(raw)+8192)*8/1e6+payload['generationConfig']['maxOutputTokens']*36/1e6
         old=self.budget.reserve_api(ident,self.task,self.phase,reserve,request_hash)
         if old['request_hash']!=request_hash:raise RuntimeError('Request ID reused with different input')
         if old['state']=='completed':return read(directory/'adapted.json')
@@ -75,11 +90,11 @@ class GeminiTransport:
                 write(directory/'billing.json',bill)
             # Charge rejected/incomplete responses too; no silent retry.
             self.budget.update_api(ident,state='rejected',charged_usd=cost,provider_request_id=request_provider_id,
-                                   role=role,response_model=body.get('modelVersion'),finished_at=time.time())
+                                   role=role,response_model=body.get('modelVersion'),finish_reason=(body.get('candidates') or [{}])[0].get('finishReason'),finished_at=time.time())
             if cost>reserve:raise RuntimeError('Actual charge exceeded conservative reservation')
             if body.get('modelVersion')!=config.model:raise RuntimeError('Unexpected response model identity')
             candidates=body.get('candidates',[])
-            if not candidates or candidates[0].get('finishReason')!='STOP':raise RuntimeError('Incomplete Gemini response')
+            if not candidates or candidates[0].get('finishReason')!='STOP':raise RuntimeError('Incomplete Gemini response: '+str(candidates[0].get('finishReason') if candidates else 'no candidate'))
             text=''.join(p.get('text','') for p in candidates[0]['content']['parts'] if not p.get('thought'))
             if not text.strip():raise RuntimeError('Empty Gemini output')
             adapted={'choices':[{'message':{'content':text}}],

@@ -56,8 +56,8 @@ def main():
         for source,target in [(execution.get('pretrained_models'),'/models/pretrained'),(str(WORKSPACE/'cache/torch'),'/models/torch')]:
             if source and Path(source).exists():pairs.append((Path(source).resolve(),Path(target),True))
         mounts=[{'Source':str(s),'Target':str(t),'Type':'bind','ReadOnly':ro} for s,t,ro in pairs]
-        env={'CONDA_PREFIX':str(environment),'OMP_NUM_THREADS':'8','OPENBLAS_NUM_THREADS':'8',
-             'MKL_NUM_THREADS':'8','PYTHONUNBUFFERED':'1','HF_HUB_OFFLINE':'1','HF_DATASETS_OFFLINE':'1',
+        env={'CONDA_PREFIX':str(environment),'OMP_NUM_THREADS':str(len(cpu)),'OPENBLAS_NUM_THREADS':str(len(cpu)),
+             'MKL_NUM_THREADS':str(len(cpu)),'PYTHONUNBUFFERED':'1','HF_HUB_OFFLINE':'1','HF_DATASETS_OFFLINE':'1',
              'TORCH_HOME':'/models/torch','BENCH_CONTAINER_IMAGE':execution['image']}
         key=str(directory.relative_to(root))
         budget.start_execution(key,task,phase,timeout+5,gpu is not None)

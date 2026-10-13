@@ -7,8 +7,8 @@
     "api_key_env": "RSI_GEMINI_API_KEY",
     "credential_file": "/mnt/afs/yangsen1/teamo/credentials.txt",
     "reasoning_effort": "high",
-    "discovery_output_tokens": 16384,
-    "developer_output_tokens": 8192,
+    "discovery_output_tokens": 65536,
+    "developer_output_tokens": 65536,
     "trust_env": false
   },
   "development_tasks": [
@@ -65,6 +65,24 @@
       "ranzcr-clip-catheter-line-classification",
       "siim-isic-melanoma-classification",
       "the-icml-2013-whale-challenge-right-whale-redux"
+    ],
+    "cpu_groups": [
+      [
+        64,
+        65
+      ],
+      [
+        66,
+        67
+      ],
+      [
+        68,
+        69
+      ],
+      [
+        70,
+        71
+      ]
     ]
   },
   "protocol_notes": [
@@ -73,7 +91,7 @@
     "Development and final share each task's API and execution budget. Failed attempts and rejected responses count.",
     "Public validation scores are candidate-reported; identity and metric are checked, scores are not universally recomputed.",
     "Single seed pilot. Development4, remaining18, all22 are reported separately. Remaining18 have prior baseline observations and are not pristine blind tests.",
-    "Serial task execution and serial candidate execution, with concurrent generation within each batch; W=2 is not a claim of two simultaneous GPU workers.",
+    "Four task lanes with disjoint two-core CPU groups; candidates and paid generation serialized per task. GPU devices are exclusively leased from 4-7.",
     "Native v26 cumulative any-node best-first plus virtual replay retained; shortened rounds and no hyperparameter/counterfactual tuning for first bounded pilot."
   ]
 }

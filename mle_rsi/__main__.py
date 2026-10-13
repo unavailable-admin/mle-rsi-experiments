@@ -20,7 +20,9 @@ def preflight(spec):
     for task in task_ids():
         assert (WORKSPACE/'data/mlebench'/task/'prepared/public/description.md').is_file(),task
     execution=spec['execution']
-    assert len(execution['cpu_ids'])==8
+    groups=execution.get('cpu_groups',[execution['cpu_ids']])
+    flat=[cpu for group in groups for cpu in group]
+    assert all(groups) and len(flat)==len(set(flat)) and set(flat)==set(execution['cpu_ids'])
     assert set(execution['cpu_ids']) <= os.sched_getaffinity(0)
     assert Path(execution['python_environment'],'bin/python').exists()
     client=docker.from_env()
@@ -73,7 +75,8 @@ def main():
             row=read(final if final.exists() else path)
             print(row['phase'],row['task'],row['state'],row.get('reason',''))
         return
-    frozen(root)
+    record=frozen(root)
+    os.sched_setaffinity(0,record['spec']['execution']['cpu_ids'])
     with lock(root/'controller',blocking=False):
         async def run():
             if a.command in ('dev','run'):await develop(root)

@@ -77,3 +77,29 @@ def test_frozen_config_rejects_source_drift(tmp_path,monkeypatch):
     root=initialize(tmp_path/'run',spec(),mode='mock')
     monkeypatch.setattr('mle_rsi.experiment.source_manifest',lambda:{'changed':True})
     with pytest.raises(RuntimeError):frozen(root)
+
+@pytest.mark.asyncio
+async def test_parallel_lanes_never_overlap_cpu_groups():
+    from mle_rsi.experiment import task_lanes,task_cpu_ids
+    from mle_rsi.backend import task_ids
+    s=spec();tasks=task_ids()[:8];active=set();peak=0
+    async def run(task):
+        nonlocal peak
+        cpus=set(task_cpu_ids(s,task,'final'))
+        assert not active & cpus
+        active.update(cpus);peak=max(peak,len(active))
+        await asyncio.sleep(.01)
+        active.difference_update(cpus)
+        return {'task':task}
+    rows=await task_lanes(s,tasks,'final',run)
+    assert [r['task'] for r in rows]==tasks
+    assert peak==8 and not active
+
+@pytest.mark.asyncio
+async def test_mle_viewer_hides_bootstrap_score(tmp_path):
+    root=initialize(tmp_path/'root',spec(),mode='mock')
+    c=campaign(root,'leaf-classification','development')
+    await c.bootstrap()
+    c.store.close()
+    row=RunReader(root/'campaigns').campaign('dev-leaf-classification')
+    assert row['best_score'] is None

@@ -1,5 +1,6 @@
 """Build native Dream-RSI campaigns, then freeze a policy across development worlds."""
 import asyncio
+import copy
 import json
 import math
 import subprocess
@@ -52,8 +53,31 @@ def frozen(root):
     return value
 
 
+def task_cpu_ids(spec,task,phase):
+    groups=spec['execution'].get('cpu_groups',[spec['execution']['cpu_ids']])
+    tasks=spec['development_tasks'] if phase=='development' else task_ids()
+    return groups[tasks.index(task)%len(groups)]
+
+
+async def task_lanes(spec,tasks,phase,run):
+    groups=spec['execution'].get('cpu_groups',[spec['execution']['cpu_ids']])
+    canonical=spec['development_tasks'] if phase=='development' else task_ids()
+    async def lane(index):
+        values=[]
+        for task in tasks:
+            if canonical.index(task)%len(groups)==index:
+                values.append(await run(task))
+        return values
+    lanes=await asyncio.gather(*(lane(i) for i in range(len(groups))),return_exceptions=True)
+    for result in lanes:
+        if isinstance(result,BaseException):raise result
+    rows=[r for lane in lanes for r in lane]
+    return sorted(rows,key=lambda r:tasks.index(r['task']))
+
+
 def campaign(root, task, phase, *, initial_source=None):
-    root=Path(root);record=frozen(root);spec=record['spec'];mode=record['mode']
+    root=Path(root);record=frozen(root);spec=copy.deepcopy(record['spec']);mode=record['mode']
+    spec['execution']['cpu_ids']=task_cpu_ids(spec,task,phase)
     s=spec['search'];model=spec['model']
     is_dev=phase=='development'
     prefix='dev' if is_dev else 'final'
@@ -141,18 +165,22 @@ async def run_task(root, task, phase, policy=None):
 
 
 async def develop(root):
-    spec=frozen(root)['spec']
-    results=[]
-    for task in spec['development_tasks']:
-        print('DEVELOP',task,flush=True)
-        result=await run_task(root,task,'development')
-        results.append(result)
-        print('RESULT',task,result['state'],'rounds='+str(result['completed_rounds']),result.get('reason',''),flush=True)
+    root=Path(root);spec=frozen(root)['spec']
+    async def one(task):
         api_rows=read(root/'budget.json').get('api',{}).values() if (root/'budget.json').exists() else []
-        if any(r['state']=='uncertain' for r in api_rows):
-            print('STOP: unresolved API outcome; later tasks were not started. Inspect budget.json.',flush=True)
-            break
-    write(Path(root)/'development.json',results)
+        if any(r['state']=='uncertain' and r['task']==task for r in api_rows):
+            result={'task':task,'phase':'development','state':'stopped','completed_rounds':0,
+                    'reason':'Unresolved prior API outcome for this task; no new request sent',
+                    'selected':None}
+            write(root/'outcomes/development'/task/'status.json',result)
+            print('STOP',task,result['reason'],flush=True)
+            return result
+        print('DEVELOP',task,'CPUs',task_cpu_ids(spec,task,'development'),flush=True)
+        result=await run_task(root,task,'development')
+        print('RESULT',task,result['state'],'rounds='+str(result['completed_rounds']),result.get('reason',''),flush=True)
+        return result
+    results=await task_lanes(spec,spec['development_tasks'],'development',one)
+    write(root/'development.json',results)
     return results
 
 
@@ -216,7 +244,7 @@ def grade_selected(root,task,result):
         r=measure([str(WORKSPACE/'envs/mlebench/bin/python'),str(REPO/'third_party/rsi-eval/src/mle_grade.py'),
                    'grade','--submission',str(entries),'--output-dir',str(grading),
                    '--data-dir',str(WORKSPACE/'data/mlebench')],WORKSPACE,__import__('os').environ.copy(),
-                   out/'grading-resources',timeout=1800,cpu_ids=record['spec']['execution']['cpu_ids'])
+                   out/'grading-resources',timeout=1800,cpu_ids=task_cpu_ids(record['spec'],task,'final'))
         files=list(grading.glob('*_grading_report.json'))
         if r['exit_code'] or not files:
             value={'task':task,'state':'grading_failed','valid_submission':False,'any_medal':False}
@@ -242,11 +270,13 @@ async def final_evaluate(root,tasks=None):
     if sha(path)!=selection['policy_sha256']:raise RuntimeError('Frozen policy changed')
     selected=tasks or record['final_tasks']
     if not set(selected)<=set(record['final_tasks']):raise ValueError('Task outside frozen Lite22 list')
-    for task in selected:
+    async def one(task):
         print('FINAL',task,flush=True)
         result=await run_task(root,task,'final',path.read_text())
-        grade_selected(root,task,result)
+        await asyncio.to_thread(grade_selected,root,task,result)
         summarize(root)
+        return result
+    await task_lanes(record['spec'],selected,'final',one)
 
 
 def summarize(root):

@@ -158,7 +158,7 @@ class MLEBackend:
                 'public_data_dir':'/data','output_dir':'/output',
                 'validation_metric':self.metric['name'],'higher_is_better':self.metric['higher_is_better'],
                 'budget':{'wall_seconds':self.spec['execution']['candidate_timeout_seconds'],
-                          'cpu_cores':8,'memory_gib':32}}
+                          'cpu_cores':len(self.spec['execution']['cpu_ids']),'memory_gib':32}}
         write(directory/'task.json', task)
         write(directory/'request.json', dict(task=self.task_id, root=str(self.root), phase=self.phase,
                                            directory=str(directory), spec=self.spec))

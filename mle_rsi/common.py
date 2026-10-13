@@ -55,7 +55,7 @@ class Budget:
         with self.state() as s:
             if key in s['api']:
                 return dict(s['api'][key])
-            if any(r['state'] == 'uncertain' for r in s['api'].values()):
+            if any(r['state'] == 'uncertain' and r['task'] == task for r in s['api'].values()):
                 raise LimitReached('Unsettled API request; inspect budget.json before continuing')
             rows = [r for r in s['api'].values() if r['task'] == task]
             total = sum(r.get('charged_usd', r['reserved_usd']) for r in rows)

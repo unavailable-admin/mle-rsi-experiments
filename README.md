@@ -40,7 +40,7 @@ cd /mnt/afs/yangsen1/projects/mle-rsi-experiments
 - 练习四题：leaf、spooky、denoising、taxi。每题两轮原生 online + offline；汇总四题公共验证历史，用 replay 平均值选择一个通用策略。
 - 最终 Lite22 固定策略，仅运行在线解法搜索，不再修改策略。最终私有成绩仅用于报告，不返回搜索或策略选择。
 - 同一题开发和最终评估合计 API 上限 $5、GPU 分配时间上限 2h；另设候选累计墙钟 2h 上限。开发阶段先分配 $2.5 / 40min，剩余留给最终阶段。22 题最多 $110 / 44 GPU h，失败尝试计费，不自动重置预算。
-- 每个候选最多 15min；任务及训练候选串行执行，批内模型生成可并发。CPU 64–71，GPU 仅从 4–7 中租用空闲卡。避免占用另一组 MLEvolve 的 GPU 0–3。
+- 每个候选最多 15min；四个任务并行，CPU 64–71 分为四组，每题2核；题内训练及模型请求串行。GPU 仅从 4–7 中租用空闲卡。避免占用另一组 MLEvolve 的 GPU 0–3。
 - 请求前按保守价格预留费用，按供应商账单结算。账单未知则阻止继续调用，绝不自动重发。金额预留可能导致提前停止；完整开发未结束时拒绝自动冻结，需检查日志后调整新实验设计。
 - init 冻结配置与代码哈希；修改代码后必须新建 run。新目录不意味着获准重新花费已消耗预算，请保留并核对旧账单。
 
@@ -63,3 +63,24 @@ cd /mnt/afs/yangsen1/projects/mle-rsi-experiments
 ## 代理连接修复（2026-10-13）
 
 本机 TeamO 连接设置 `model.trust_env=false`，避免继承不可用的 SSH 会话 HTTP 代理；这是该服务的显式配置，不改变系统代理。preflight 现在会认证读取模型列表并确认模型存在，仍不会发起付费生成。开发过程逐题打印完成/停止原因；遇到未决请求立即停止后续任务。pilot-001 的两次 ProxyError 发生在 HTTPS 代理隧道建立阶段，训练尚未启动。恢复目录 pilot-002 保留旧记录的来源及核对说明，正式开发仍由用户启动。
+
+## 并行与截断修复
+
+霖睿 v25 配置的 discovery/developer 输出上限均为65,536；此前本接入分别只有16,384/8,192且启用HIGH thinking。pilot-002多次返回MAX_TOKENS，没有有效训练结果，费用仍计入预算。
+
+新配置保留Gemini HIGH thinking，两类请求输出上限均提高到65,536。按剩余美元预算计算实际允许上限；若预算不足以预留至少32,768输出tokens，明确停止，不发送明显过小的请求。每题请求串行结算，四题之间可并发。这个改动尚不能保证模型永不截断。
+
+并行分配：leaf CPU64–65，spooky CPU66–67，denoising CPU68–69，taxi CPU70–71。最终22题按固定任务顺序轮流映射到四个槽；一个槽同一时刻只跑一题。控制进程也限制到CPU64–71。GPU任务独占租用GPU4–7；MLEvolve预留GPU0–3和CPU0–63，不使用它暂时空闲的预留资源。每个训练容器内存上限32GB，四题最多128GB。不能将本次每题2核结果与原8核配置无说明混用。
+
+旧run冻结的源码不随修复覆盖；新run必须继承此前每题的已知费用，不能以换目录重置预算。pilot-003继承pilot-002账本，尚未启动付费生成。Taxi有两次取消且账单未知的请求，会保留预留款并阻止该题重新调用；其余三题可独立继续。四题完整开发不能在Taxi未解决时冻结。启动：
+
+```bash
+cd /mnt/afs/yangsen1/projects/mle-rsi-experiments
+RUN=/mnt/afs/yangsen1/runs/dream-rsi-mle-gemini-pilot-003
+set -o pipefail
+./experiment dev --run-dir "$RUN" 2>&1 | tee "$RUN/development.log"
+# 另开终端，先Ctrl-C关闭旧viewer，再运行：
+./experiment web --run-dir /mnt/afs/yangsen1/runs/dream-rsi-mle-gemini-pilot-003 --port 18766
+```
+
+重启viewer并刷新浏览器可看到新的分数说明。无有效候选时显示“暂无有效结果”，根节点明确标注未评估；不显示相对占位根节点的夸张提升百分比。
