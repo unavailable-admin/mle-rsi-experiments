@@ -19,13 +19,14 @@ def spec():
     return s
 
 
-def test_budget_shares_development_and_final_and_blocks_unknown(tmp_path):
+def test_budget_shares_phases_and_keeps_unknown_reservations(tmp_path):
     b=Budget(tmp_path,spec()['budget'])
     b.reserve_api('d','leaf','development',1.,'h')
     b.update_api('d',state='uncertain')
-    with pytest.raises(LimitReached):b.reserve_api('other','leaf','final',1.,'h')
+    b.reserve_api('other','leaf','final',1.,'h')
+    b.update_api('other',state='completed',charged_usd=0)
     b.update_api('d',state='completed',charged_usd=2.4)
-    with pytest.raises(LimitReached):b.reserve_api('dev2','leaf','development',.2,'h')
+    with pytest.raises(LimitReached):b.reserve_api('dev2','leaf','development',2.7,'h')
     b.reserve_api('f','leaf','final',2.,'h')
     b.update_api('f',state='completed',charged_usd=2.)
     with pytest.raises(LimitReached):b.reserve_api('too-much','leaf','final',.7,'h')
@@ -103,3 +104,51 @@ async def test_mle_viewer_hides_bootstrap_score(tmp_path):
     c.store.close()
     row=RunReader(root/'campaigns').campaign('dev-leaf-classification')
     assert row['best_score'] is None
+
+
+def test_uncertain_two_calls_leave_exact_remaining_budget(tmp_path):
+    b=Budget(tmp_path,spec()['budget'])
+    for key in ['a','b']:
+        b.reserve_api(key,'taxi','development',.863984,'hash')
+        b.update_api(key,state='uncertain')
+    b.reserve_api('new','taxi','development',3.272032,'newhash')
+    with pytest.raises(LimitReached):b.reserve_api('over','taxi','final',.00001,'h')
+    rows=read(tmp_path/'budget.json')['api']
+    assert rows['a']['state']=='uncertain' and 'charged_usd' not in rows['a']
+
+
+def test_explicit_upgrade_preserves_ledger_and_archives_config(tmp_path):
+    from mle_rsi.__main__ import upgrade_budget
+    from mle_rsi.common import write
+    s=spec();s['budget']['development_api_usd_per_task']=2.5
+    root=initialize(tmp_path/'run',s,mode='mock')
+    budget=Budget(root,s['budget']);budget.reserve_api('a','taxi','development',.8,'h');budget.update_api('a',state='uncertain')
+    original=(root/'budget.json').read_bytes()
+    upgrade_budget(root)
+    assert (root/'budget.json').read_bytes()==original
+    assert read(root/'budget-upgrade-before.json')['spec']['budget']['development_api_usd_per_task']==2.5
+    assert frozen(root)['spec']['budget']['development_api_usd_per_task']==5
+
+@pytest.mark.asyncio
+async def test_upgrade_only_restores_requests_never_sent(tmp_path):
+    from mle_rsi.__main__ import upgrade_budget
+    from mle_rsi.common import write
+    from dream_rsi.storage import CampaignStore
+    root=initialize(tmp_path/'run',spec(),mode='mock')
+    c=campaign(root,'leaf-classification','development')
+    await c.bootstrap()
+    for key in ['local-limit','sent-unknown']:
+        c.ledger.reserve(key,'discovery',100,key)
+        c.ledger.reconcile(key,{'status':'external_unknown'})
+        c.store.put('provider_error',key,{'error_type':'LimitReached'})
+    c.store.close()
+    b=Budget(root,spec()['budget']);b.reserve_api('dev-leaf-classification:sent-unknown','leaf-classification','development',.5,'sent');b.update_api('dev-leaf-classification:sent-unknown',state='uncertain')
+    result=root/'outcomes/development/leaf-classification/result.json'
+    write(result,{'state':'stopped'})
+    upgrade_budget(root)
+    store=CampaignStore(root/'campaigns/dev-leaf-classification')
+    assert store.get('usage','local-limit').status=='reserved'
+    assert store.get('usage','sent-unknown').status=='external_unknown'
+    assert store.get('budget_recovery','local-limit') is not None
+    store.close()
+    assert not result.exists()

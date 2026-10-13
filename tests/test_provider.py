@@ -7,7 +7,7 @@ from test_experiment import spec
 
 @pytest.mark.asyncio
 async def test_provider_billing_cache_and_rejected_model(tmp_path, monkeypatch):
-    s=spec();monkeypatch.setenv(s['model']['api_key_env'],'test-key')
+    s=spec();s['budget']['development_api_usd_per_task']=2.5;monkeypatch.setenv(s['model']['api_key_env'],'test-key')
     config=SimpleNamespace(api_key_env=s['model']['api_key_env'],model=s['model']['name'],max_output_tokens=128)
     calls=[]
     def handler(request):
@@ -27,7 +27,7 @@ async def test_provider_billing_cache_and_rejected_model(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_provider_uncertain_request_never_retries(tmp_path,monkeypatch):
-    s=spec();monkeypatch.setenv(s['model']['api_key_env'],'test-key')
+    s=spec();s['budget']['development_api_usd_per_task']=2.5;monkeypatch.setenv(s['model']['api_key_env'],'test-key')
     config=SimpleNamespace(api_key_env=s['model']['api_key_env'],model=s['model']['name'],max_output_tokens=128)
     calls=[]
     def handler(request):
@@ -44,7 +44,7 @@ async def test_provider_uncertain_request_never_retries(tmp_path,monkeypatch):
 
 @pytest.mark.asyncio
 async def test_large_output_cap_respects_money_and_records_truncation(tmp_path,monkeypatch):
-    s=spec();monkeypatch.setenv(s['model']['api_key_env'],'test-key')
+    s=spec();s['budget']['development_api_usd_per_task']=2.5;monkeypatch.setenv(s['model']['api_key_env'],'test-key')
     config=SimpleNamespace(api_key_env=s['model']['api_key_env'],model=s['model']['name'],max_output_tokens=65536)
     from mle_rsi.common import Budget
     b=Budget(tmp_path,s['budget'])

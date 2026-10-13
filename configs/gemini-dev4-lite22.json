@@ -19,7 +19,7 @@
   ],
   "budget": {
     "api_usd_per_task": 5,
-    "development_api_usd_per_task": 2.5,
+    "development_api_usd_per_task": 5,
     "gpu_seconds_per_task": 7200,
     "execution_seconds_per_task": 7200,
     "development_execution_seconds_per_task": 2400

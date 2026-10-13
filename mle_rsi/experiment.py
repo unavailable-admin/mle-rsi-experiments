@@ -167,14 +167,6 @@ async def run_task(root, task, phase, policy=None):
 async def develop(root):
     root=Path(root);spec=frozen(root)['spec']
     async def one(task):
-        api_rows=read(root/'budget.json').get('api',{}).values() if (root/'budget.json').exists() else []
-        if any(r['state']=='uncertain' and r['task']==task for r in api_rows):
-            result={'task':task,'phase':'development','state':'stopped','completed_rounds':0,
-                    'reason':'Unresolved prior API outcome for this task; no new request sent',
-                    'selected':None}
-            write(root/'outcomes/development'/task/'status.json',result)
-            print('STOP',task,result['reason'],flush=True)
-            return result
         print('DEVELOP',task,'CPUs',task_cpu_ids(spec,task,'development'),flush=True)
         result=await run_task(root,task,'development')
         print('RESULT',task,result['state'],'rounds='+str(result['completed_rounds']),result.get('reason',''),flush=True)

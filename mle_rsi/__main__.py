@@ -52,7 +52,7 @@ def preflight(spec):
 
 def main():
     p=argparse.ArgumentParser(description='Pinned Dream-RSI MLE online/offline experiment')
-    p.add_argument('command',choices=['preflight','init','dev','freeze','final','run','status','web'])
+    p.add_argument('command',choices=['preflight','init','dev','freeze','final','run','status','web','upgrade-budget'])
     p.add_argument('--config',type=Path,default=REPO/'configs/gemini-dev4-lite22.json')
     p.add_argument('--run-dir',type=Path)
     p.add_argument('--mode',choices=['real','mock','smoke'],default='real')
@@ -75,6 +75,10 @@ def main():
             row=read(final if final.exists() else path)
             print(row['phase'],row['task'],row['state'],row.get('reason',''))
         return
+    if a.command=='upgrade-budget':
+        with lock(root/'controller',blocking=False):
+            upgrade_budget(root)
+        return
     record=frozen(root)
     os.sched_setaffinity(0,record['spec']['execution']['cpu_ids'])
     with lock(root/'controller',blocking=False):
@@ -85,9 +89,61 @@ def main():
         asyncio.run(run())
 
 
+def upgrade_budget(root):
+    """Explicit, archived migration; caller must hold the controller lock."""
+    from .experiment import source_manifest
+    import time
+    config_path=root/'frozen-config.json'
+    before=read(config_path)
+    current=source_manifest()
+    changed={p for p in set(current)|set(before['source_hashes']) if current.get(p)!=before['source_hashes'].get(p)}
+    allowed={'mle_rsi/common.py','mle_rsi/experiment.py','mle_rsi/__main__.py'}
+    if not changed<=allowed:
+        raise RuntimeError('Migration refuses unrelated source changes: '+str(sorted(changed-allowed)))
+    archive=root/'budget-upgrade-before.json'
+    if not archive.exists():write(archive,before)
+    before['spec']['budget']['development_api_usd_per_task']=before['spec']['budget']['api_usd_per_task']
+    before['source_hashes']=current
+    before.setdefault('migrations',[]).append({'at':time.time(),'change':'Uncertain API calls retain full reservations; permit new calls within shared task cap; development may use remaining total cap','changed_sources':sorted(changed)})
+    write(config_path,before)
+    # Restore only requests proven to have stopped locally before transport reservation.
+    import hashlib
+    from dataclasses import replace
+    from dream_rsi.storage import CampaignStore
+    ledger=read(root/'budget.json') if (root/'budget.json').exists() else {'api':{}}
+    restored=[]
+    for directory in sorted((root/'campaigns').glob('dev-*')):
+        if not (directory/'campaign.sqlite').exists():continue
+        store=CampaignStore(directory)
+        recovered=[]
+        try:
+            for request_id,error in store.list('provider_error'):
+                if error.get('error_type')!='LimitReached':continue
+                usage=store.get('usage',request_id)
+                ident=directory.name+':'+request_id
+                transport_path=root/'api'/directory.name/hashlib.sha256(request_id.encode()).hexdigest()[:24]/'request.json'
+                if usage is None or usage.status!='external_unknown':continue
+                if ident in ledger['api'] or transport_path.exists() or store.get('response',request_id) is not None:continue
+                store.put('budget_recovery',request_id,{'previous_usage':usage,'provider_error':error,'reason':'No transport reservation or request artifact: rejected locally before send','at':time.time()})
+                store.put('usage',request_id,replace(usage,status='reserved'))
+                recovered.append(request_id)
+        finally:store.close()
+        if recovered:
+            task=directory.name.removeprefix('dev-')
+            result=root/'outcomes/development'/task/'result.json'
+            if result.exists() and read(result).get('state')=='stopped':
+                result.rename(result.with_name('result-before-budget-upgrade-'+str(time.time_ns())+'.json'))
+            restored.append({'task':task,'requests':recovered})
+    write(root/'budget-recovery.json',{'at':time.time(),'restored':restored,'old_uncertain_requests_replayed':False})
+    print('Budget policy upgraded; all charges and reservations preserved. No experiment launched.')
+    print('Locally blocked requests restored:',json.dumps(restored))
+
+
 def budget_summary(value):
     rows=list(value.get('api',{}).values());execution=list(value.get('execution',{}).values())
     return {'api_usd':sum(r.get('charged_usd',0) for r in rows),
+            'api_reserved_usd':sum(r['reserved_usd'] for r in rows if 'charged_usd' not in r),
+            'api_accounted_usd':sum(r.get('charged_usd',r['reserved_usd']) for r in rows),
             'unsettled_requests':sum(r['state'] in ('pending','uncertain') for r in rows),
             'gpu_hours':sum(r['gpu_seconds'] for r in execution)/3600,
             'candidate_wall_hours':sum(r['wall_seconds'] for r in execution)/3600}

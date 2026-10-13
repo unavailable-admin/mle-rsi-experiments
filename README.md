@@ -84,3 +84,11 @@ set -o pipefail
 ```
 
 重启viewer并刷新浏览器可看到新的分数说明。无有效候选时显示“暂无有效结果”，根节点明确标注未评估；不显示相对占位根节点的夸张提升百分比。
+
+## 未决账单与预算恢复修复
+
+未决API请求保留全额预留，但不再禁止该题发起新的、预算内的请求。原请求ID仍禁止自动重发。开发允许使用每题$5总额中的剩余部分；最终评估与开发继续共用该上限，不再额外锁死开发$2.5。
+
+`./experiment upgrade-budget --run-dir RUN` 是显式迁移命令：必须获得实验控制锁，备份原冻结配置与来源版本，保留账本原样。只将能证明未进入transport的本地LimitReached请求恢复为可发送，并归档对应的停止结果，保留已完成轮次与候选。它不调用付费模型。其他源码变化不会被这个迁移命令接受。
+
+pilot-003当前运行结束后，由已安排的本地修复进程自动执行以上迁移。修复进度见该run的 `budget-fix-apply.log` 和 `budget-fix-apply-status.json`。完成后在原主仓库执行 `./experiment dev --run-dir /mnt/afs/yangsen1/runs/dream-rsi-mle-gemini-pilot-003` 续跑；不要重新init或新建目录重置预算。
