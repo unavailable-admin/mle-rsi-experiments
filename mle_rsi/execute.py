@@ -40,9 +40,13 @@ def main():
                 break
             if lease is None: raise LimitReached('No free configured GPU; preserving other experiments')
         budget = Budget(root,spec['budget'])
-        allowance = budget.execution_allowance(task,phase,gpu is not None)
-        # Leave headroom for timeout detection and container cleanup.
-        timeout=min(execution['candidate_timeout_seconds'],allowance-5)
+        key=str(directory.relative_to(root))
+        parallel = bool(execution.get('candidate_cpu_groups'))
+        if parallel:
+            timeout = budget.reserve_execution(key,task,phase,execution['candidate_timeout_seconds'],gpu is not None)
+        else:
+            allowance = budget.execution_allowance(task,phase,gpu is not None)
+            timeout=min(execution['candidate_timeout_seconds'],allowance-5)
         work=directory/'output';work.mkdir()
         task_data=read(directory/'task.json')
         task_data['budget'].update(wall_seconds=timeout,gpu_count=int(gpu is not None))
@@ -70,7 +74,8 @@ def main():
              'MKL_NUM_THREADS':str(len(cpu)),'PYTHONUNBUFFERED':'1','HF_HUB_OFFLINE':'1','HF_DATASETS_OFFLINE':'1',
              'TORCH_HOME':'/models/torch','BENCH_CONTAINER_IMAGE':execution['image']}
         key=str(directory.relative_to(root))
-        budget.start_execution(key,task,phase,timeout+5,gpu is not None)
+        if not parallel:
+            budget.start_execution(key,task,phase,timeout+5,gpu is not None)
         try:
             command=[str(environment/'bin/python'),'/runtime/mle_runtime.py','/agent.py'] if validation else [str(environment/'bin/python'),'/agent.py','--task','/task.json']
             result=measure_container(command,

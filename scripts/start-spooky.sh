@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
-run_dir="${1:-/mnt/afs/yangsen1/runs/dream-rsi-spooky-solver-500-001}"
+run_dir="${1:-/mnt/afs/yangsen1/runs/dream-rsi-spooky-solver-500-002}"
 if [[ ! -f "$run_dir/frozen-config.json" ]]; then
   ./single-task init --run-dir "$run_dir"
 fi

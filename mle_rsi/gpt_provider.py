@@ -17,7 +17,7 @@ class GPTTransport:
     def __init__(self, root, spec, task, phase, campaign_id):
         self.root, self.spec, self.task, self.phase, self.campaign_id = Path(root), spec, task, phase, campaign_id
         self.budget = Budget(root, spec['budget'])
-        self.gate = asyncio.Lock()
+        self.gate = asyncio.Semaphore(spec['model'].get('request_parallelism', 1))
 
     async def __call__(self, config, messages, request_id, role):
         async with self.gate:

@@ -25,6 +25,13 @@ def validate(spec):
     s = spec['search']
     if s['policy_versions_per_round'] < 2 or not spec.get('mandatory_bounded_repair'):
         raise ValueError('Offline updates and host repair guard are required')
+    groups = spec['execution'].get('candidate_cpu_groups')
+    if groups:
+        flat = [cpu for group in groups for cpu in group]
+        if len(groups) != 5 or any(len(g) != 8 for g in groups) or len(flat) != len(set(flat)) or set(flat) != set(spec['execution']['cpu_ids']):
+            raise ValueError('Five-way run requires five disjoint eight-CPU candidate lanes')
+        if spec['model'].get('request_parallelism') != 5:
+            raise ValueError('Five-way run requires API parallelism five')
     total = s['development_rounds'] * s['batches_per_round'] * s['workers']
     points = spec['single_task']['checkpoint_candidates']
     per_round = s['batches_per_round'] * s['workers']
@@ -86,6 +93,10 @@ async def search(root):
         return completed_search(root, spec)
     if list((root/'checkpoints').glob('*/official-result.json')):
         raise RuntimeError('Cannot search after private evaluation')
+    if (root/'budget.json').exists():
+        ledger=read(root/'budget.json')
+        if any(r['state']=='running' for r in ledger.get('execution',{}).values()):
+            raise RuntimeError('Unfinished execution reservation; reconcile before resume')
     os.sched_setaffinity(0, spec['execution']['cpu_ids'])
     timing = root/'single-timing.json'
     if not timing.exists():
@@ -128,6 +139,7 @@ def report(root):
     record = read(root/'frozen-config.json'); spec = record['spec']
     data = {'mode':record['mode'],'target_candidates':validate(spec),'target_rounds':spec['search']['development_rounds'],
             'state':read(root/'single-status.json') if (root/'single-status.json').exists() else {'state':'ready'},
+            'parallelism':{'api':spec['model'].get('request_parallelism',1),'training':len(spec['execution'].get('candidate_cpu_groups',[])) or 1},
             'completed_rounds':0,'nodes':[],'checkpoints':[],'updated_at':time.time()}
     if (store_path(root)/'campaign.sqlite').exists():
         store = CampaignStore(store_path(root),read_only=True)
@@ -194,7 +206,7 @@ def render(data):
     svg.append('<text x="60" y="22">Log loss ↓</text><text x="700" y="346">Candidate slots</text></svg>')
     rows=''.join('<tr>'+''.join('<td>'+html.escape(str(c.get(k,'—')))+'</td>' for k in ['candidates','public','private','medal','node_id'])+'</tr>' for c in data['checkpoints'])
     b=data.get('budget',{})
-    stats=f"{len(data['nodes'])}/{data['target_candidates']} candidates · {data['completed_rounds']}/{data['target_rounds']} rounds · {data['valid_candidates']} valid · {data['unique_sources']} distinct code · {data['unique_submissions']} distinct submissions · {data['successful_debug']} successful debug"
+    stats=f"API {data.get('parallelism',{}).get('api',1)}-way / training {data.get('parallelism',{}).get('training',1)}-way · {len(data['nodes'])}/{data['target_candidates']} candidates · {data['completed_rounds']}/{data['target_rounds']} rounds · {data['valid_candidates']} valid · {data['unique_sources']} distinct code · {data['unique_submissions']} distinct submissions · {data['successful_debug']} successful debug"
     return '''<!doctype html><html lang="zh"><meta charset="utf-8"><meta http-equiv="refresh" content="30"><title>Spooky solver search</title><style>body{font:16px system-ui;background:#f4f6fa;color:#192638;max-width:1100px;margin:40px auto;padding:20px}article{background:white;padding:24px;border-radius:12px;margin:20px 0}svg{width:100%}td,th{text-align:left;padding:12px;border-bottom:1px solid #ddd}table{width:100%}code{word-break:break-all}</style><h1>Spooky · 单题 solver 搜索</h1>'''+f'<p>{html.escape(str(data["state"]))} · mode={data["mode"]} · phase={data.get("phase","—")}</p><article>{stats}<p>API charged ${b.get("api_usd",0):.3f}; accounted incl. reservations ${b.get("api_accounted_usd",0):.3f} / $20 · candidate wall {b.get("candidate_wall_hours",0):.2f}h / 40h</p></article><article>'+''.join(svg)+'''<p style="color:#147d92">蓝绿：固定 public validation 历史最优；橙：搜索全部结束后测的 private checkpoint。</p><p>两种 split 的分数不可直接等同。奖牌线只适用于 private。最终 solver 始终按 public 选，不能按这张 private 曲线挑选。页面每 30 秒刷新。</p></article><article><table><tr><th>候选数</th><th>Public loss</th><th>Private loss</th><th>Medal</th><th>Solver node</th></tr>'''+rows+'</table></article></html>'
 
 

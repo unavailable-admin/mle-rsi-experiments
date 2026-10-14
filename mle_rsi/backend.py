@@ -1,5 +1,6 @@
 """Public-only candidate generation/evaluation; private grading is a separate command."""
 import asyncio
+import copy
 import csv
 import json
 import math
@@ -177,6 +178,14 @@ class MLEBackend:
                                 'validation': 'host-owned fixed split; independently recomputed public metric' if self.fixed else 'candidate-reported public holdout; fixed IDs; not independently scored'})
         self.budget = Budget(root, spec['budget'])
         self.gate = asyncio.Lock()
+        groups = spec['execution'].get('candidate_cpu_groups')
+        self.cpu_slots = asyncio.Queue() if groups else None
+        if groups:
+            flat = [cpu for group in groups for cpu in group]
+            if not all(groups) or len(flat) != len(set(flat)) or set(flat) != set(spec['execution']['cpu_ids']):
+                raise ValueError('Candidate CPU groups must partition task CPUs without overlap')
+            for group in groups:
+                self.cpu_slots.put_nowait(tuple(group))
 
     def fingerprint(self):
         return {'benchmark':'mle', 'task':self.task_id, 'metric':self.metric, 'phase':self.phase,
@@ -203,8 +212,18 @@ class MLEBackend:
                                              'score_definition':self.metric['definition']})
 
     async def evaluate(self, artifact, batch):
-        async with self.gate:
-            return await self._evaluate(artifact,batch)
+        if self.cpu_slots is None:
+            async with self.gate:
+                return await self._evaluate(artifact,batch)
+        cpus = await self.cpu_slots.get()
+        try:
+            # Per-attempt configuration; never mutate shared task state under concurrency.
+            worker = copy.copy(self)
+            worker.spec = copy.deepcopy(self.spec)
+            worker.spec['execution']['cpu_ids'] = list(cpus)
+            return await worker._evaluate(artifact,batch)
+        finally:
+            self.cpu_slots.put_nowait(cpus)
 
     async def _evaluate(self, artifact, batch):
         batch = batch() if callable(batch) else batch

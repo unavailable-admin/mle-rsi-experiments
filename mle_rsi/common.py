@@ -99,6 +99,25 @@ class Budget:
                                       wall_seconds=timeout, gpu_seconds=timeout if gpu else 0,
                                       started_at=time.time())
 
+    def reserve_execution(self, key, task, phase, requested_timeout, gpu):
+        """Atomically allocate time including all concurrent outstanding reservations."""
+        with self.state() as s:
+            if key in s['execution']:
+                raise LimitReached('Execution ID already used')
+            rows = [r for r in s['execution'].values() if r['task'] == task]
+            remaining = self.spec['execution_seconds_per_task'] - sum(r['wall_seconds'] for r in rows)
+            if phase == 'development':
+                remaining = min(remaining, self.spec['development_execution_seconds_per_task'] -
+                                sum(r['wall_seconds'] for r in rows if r['phase'] == phase))
+            if gpu:
+                remaining = min(remaining, self.spec['gpu_seconds_per_task'] - sum(r['gpu_seconds'] for r in rows))
+            if remaining < 10:
+                raise LimitReached('Per-task execution/GPU budget exhausted including running candidates')
+            timeout = min(requested_timeout, remaining - 5)
+            s['execution'][key] = dict(task=task, phase=phase, state='running',
+                wall_seconds=timeout+5, gpu_seconds=timeout+5 if gpu else 0, started_at=time.time())
+            return timeout
+
     def finish_execution(self, key, wall, gpu_seconds, **extra):
         with self.state() as s:
             s['execution'][key].update(state='completed', wall_seconds=wall,

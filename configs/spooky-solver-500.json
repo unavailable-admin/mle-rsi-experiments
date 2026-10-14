@@ -23,7 +23,8 @@
         "input_usd_per_million": 4,
         "output_usd_per_million": 20
       }
-    }
+    },
+    "request_parallelism": 5
   },
   "development_tasks": [
     "spooky-author-identification"
@@ -52,6 +53,22 @@
     "image": "sha256:859eb2ba86a41e3a360e9d726a183147a20faa990bfd5f7f3e4f4372b375f00f",
     "pretrained_models": "/mnt/afs/yangsen1/runs/mlevolve-gemini-four-v3/models",
     "cpu_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
       16,
       17,
       18,
@@ -59,11 +76,91 @@
       20,
       21,
       22,
-      23
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
     ],
     "gpu_pool": [],
     "gpu_tasks": [],
     "cpu_groups": [
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ],
+    "candidate_cpu_groups": [
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
       [
         16,
         17,
@@ -73,6 +170,26 @@
         21,
         22,
         23
+      ],
+      [
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
       ]
     ]
   },
@@ -82,9 +199,9 @@
     "Select checkpoint solvers only by host-recomputed public validation; grade saved submissions only after all 20 rounds. No fresh final search.",
     "Budget ceilings are stops, not guarantees of 500 completed candidates. No automatic retries of uncertain API requests or interrupted executions.",
     "Single seed exploratory run; repeated public validation can overfit. Private checkpoint curves are retrospective and must not choose the delivered solver.",
-    "CPU16-23, 32GiB, no GPU; startup waits for guarded experiment to finish. 5-wide decision batches execute serially.",
     "No automatic refit beyond each candidate script: transfer its saved solver and submission; full public-data refit is permitted after held-out prediction.",
-    "Local conservative UTF-8 token-accounting ceiling 120M; actual API spend remains capped at USD20. Long ancestry summaries retain first4/last28 steps; full evidence persists on disk."
+    "Local conservative UTF-8 token-accounting ceiling 120M; actual API spend remains capped at USD20. Long ancestry summaries retain first4/last28 steps; full evidence persists on disk.",
+    "Five concurrent API requests and five candidate lanes CPU0-7/8-15/16-23/24-31/32-39, 32GiB per container, no GPU; batches still commit in original candidate order. Physical CPU sibling leases cover 0-39 and 64-103; guarded must release its leases before start."
   ],
   "runtime": {
     "overall_seconds": 172800

@@ -132,3 +132,5 @@ pilot-003当前运行结束后，由已安排的本地修复进程自动执行�
 ## Spooky 单题 500 候选实验
 
 已准备独立冻结目录 `/mnt/afs/yangsen1/projects/mle-rsi-spooky-longrun`。启动、可视化、资源预算及 solver 转移协议见 [SPOOKY_EXPERIMENT.md](SPOOKY_EXPERIMENT.md)。使用 `scripts/start-spooky.sh`，不要用旧的全 22 题 run 命令。
+
+Spooky 并发版固定为 `spooky-solver-500-ready-v2`：同批 5 路 API、5 路候选训练，CPU0–39（每路8核），总内存上限160 GiB。运行目录为 `dream-rsi-spooky-solver-500-002`，旧 v1 tag 与 001 目录保留。
