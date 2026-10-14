@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "source_base": "3ccf88a209604795f75ec2e0f2f40352dc80b620",
+  "model": {
+    "name": "gpt-6-sol",
+    "base_url": "https://api.teamorouter.cn",
+    "api_key_env": "RSI_GPT_API_KEY",
+    "credential_file": "/mnt/afs/yangsen1/teamo/credentials.txt",
+    "reasoning_effort": "medium",
+    "discovery_output_tokens": 16384,
+    "developer_output_tokens": 16384,
+    "trust_env": false,
+    "transport": "gpt-chat",
+    "developer_name": "gpt-6.1-sol",
+    "developer_reasoning_effort": "high",
+    "minimum_output_tokens": 8192,
+    "reservation_rates": {
+      "gpt-6-sol": {
+        "input_usd_per_million": 4,
+        "output_usd_per_million": 20
+      },
+      "gpt-6.1-sol": {
+        "input_usd_per_million": 4,
+        "output_usd_per_million": 20
+      }
+    }
+  },
+  "development_tasks": [
+    "leaf-classification",
+    "spooky-author-identification",
+    "denoising-dirty-documents",
+    "new-york-city-taxi-fare-prediction"
+  ],
+  "budget": {
+    "api_usd_per_task": 5,
+    "development_api_usd_per_task": 3,
+    "gpu_seconds_per_task": 21600,
+    "execution_seconds_per_task": 21600,
+    "development_execution_seconds_per_task": 14400,
+    "api_usd_total": 20
+  },
+  "search": {
+    "development_rounds": 4,
+    "batches_per_round": 4,
+    "workers": 2,
+    "policy_versions_per_round": 2,
+    "replay_steps": 16,
+    "replay_scenarios": 4,
+    "final_batches": 2,
+    "max_tokens": 12000000
+  },
+  "execution": {
+    "candidate_timeout_seconds": 900,
+    "python_environment": "/mnt/afs/yangsen1/envs/mle-gemini-four",
+    "image": "sha256:859eb2ba86a41e3a360e9d726a183147a20faa990bfd5f7f3e4f4372b375f00f",
+    "pretrained_models": "/mnt/afs/yangsen1/runs/mlevolve-gemini-four-v3/models",
+    "cpu_ids": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
+    ],
+    "gpu_pool": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "gpu_tasks": [
+      "aerial-cactus-identification",
+      "aptos2019-blindness-detection",
+      "denoising-dirty-documents",
+      "dog-breed-identification",
+      "dogs-vs-cats-redux-kernels-edition",
+      "histopathologic-cancer-detection",
+      "plant-pathology-2020-fgvc7",
+      "ranzcr-clip-catheter-line-classification",
+      "siim-isic-melanoma-classification",
+      "the-icml-2013-whale-challenge-right-whale-redux"
+    ],
+    "cpu_groups": [
+      [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      [
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      [
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    ]
+  },
+  "protocol_notes": [
+    "Development runs full online plus offline separately on each of four tasks; pooled public-history replay chooses one task-independent policy for final evaluation.",
+    "Final evaluation fixes policy and disables offline revision; no final private score returns to any search or selection.",
+    "Development and final share each task's API and execution budget. Failed attempts and rejected responses count.",
+    "Public validation scores are candidate-reported; identity and metric are checked, scores are not universally recomputed.",
+    "Single seed pilot. Development4, remaining18, all22 are reported separately. Remaining18 have prior baseline observations and are not pristine blind tests.",
+    "Native v26 cumulative any-node best-first plus virtual replay retained; shortened rounds and no hyperparameter/counterfactual tuning for first bounded pilot.",
+    "New user-authorized half-day GPT experiment, distinct from previous Gemini pilots; previous budgets and artifacts remain unchanged.",
+    "Four disjoint eight-CPU task lanes on CPU8-39, GPU0-3; old pilot uses CPU64-71/GPU4-7. Physical siblings of CPU64-71 are excluded.",
+    "Development: four rounds of eight candidate slots per task, one policy revision per round; final: four candidate slots per task.",
+    "New experiment total API ceiling USD20 including uncertain reservations. Per-task USD5 shared across phases; development USD3 per task. Actual billing reconciled after each request.",
+    "Development wall deadline six hours; no partial policy freeze. Total experiment wall target twelve hours. Candidate cumulative development budget four hours per task; shared phase budget six hours."
+  ],
+  "runtime": {
+    "development_seconds": 21600,
+    "final_seconds": 21600,
+    "overall_seconds": 43200
+  }
+}

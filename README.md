@@ -1,5 +1,41 @@
 # Dream-RSI × MLE-bench 首轮实验
 
+## 第一批修复实验（2026-10-14）
+
+本工作区已同步修正版实现；当前实跑冻结源码保留在 `/mnt/afs/yangsen1/projects/mle-rsi-firstbatch-guarded`，结果目录为 `/mnt/afs/yangsen1/runs/dream-rsi-gpt-firstbatch-guarded-001`。首轮源码快照及完成核验保存在首轮结果与 verification 目录，历史账本未改动。
+
+修正版还在接受候选前按公开 sample submission 检查最终提交的列名、完整 ID、行数和数值范围，防止公开验证有效但最终 CSV 无效。该检查不读取测试标签。
+
+修正版配置为 `configs/gpt-firstbatch-guarded-dev4-lite22.json`。沿用 GPT halfday-001 的模型、
+四题开发及 Lite22 最终任务、每题开发 32 / 最终 4 个候选；新实验 API 总上限 $20，
+独立保留账本。开发执行累计上限 5.5 小时/题，总执行及 GPU 分配上限 23,460 秒/题；
+开发阶段墙钟上限 6 小时、全程 12 小时，不因恢复而重置。
+
+新增协议 v2：初始化时从公开训练数据生成固定验证清单，候选通过只读
+`mle_runtime` 辅助模块读取。宿主独立读取预测 CSV，用自身保存的公开标签重算
+22 题指标；不再以候选自报分数选择解法。按任务规则规范图像 ID、按患者/句子/图像
+分组，单样本类别保留在训练集。Pizza 的事后字段从候选可见数据中移除，SIIM 的
+诊断与良恶性字段从输入 CSV 中移除。固定划分、标签和运行时清单均保存哈希。
+
+运行错误提供具体异常、日志尾部、资源记录和失败源码；初始搜索策略提供一个占用
+正常候选名额的修复入口，失败修复不继续形成无界修复链。首轮实测发现学习策略会
+删除该入口；修正版用 `mandatory_bounded_repair=true` 将约束固定在宿主执行层，
+在线与离线回放一致执行。每批最多修复一个尚未扩展的失败节点，每个失败节点最多
+修一次，失败的 debug 节点不继续修复；后续批次补齐不会撤销约束。提供实际安装包版本、
+本地权重清单、显式 ResNet50 加载器、训练内部校准划分和阶段/模型记录函数。
+
+边界：独立评分验证预测指标与样本身份，不能证明任意生成程序内部从未使用验证
+标签训练。内部调参/校准必须使用训练内部划分。校验后的公开分数、训练/验证代码
+和运行记录仍需共同审计。本轮包含验证协议、错误反馈和修复入口的组合变化，
+与旧实验比较不能被解释为单因素因果收益；部分固定划分也与旧候选自定划分不同。
+
+首轮与修正版共用本次授权的 $20 API 总额；修正版启动前必须从上限扣除首轮已结算
+费用和所有未决预留，不删除或重置旧账本。原配置保留用于重现首轮。
+
+启动修正版：`./experiment init --config configs/gpt-firstbatch-guarded-dev4-lite22.json --run-dir RUN`，
+然后 `/mnt/afs/yangsen1/envs/dream-rsi-mle/bin/python -m mle_rsi.supervisor --run-dir RUN`。
+初始化包含公开验证数据准备，不发起付费请求。
+
 主仓库：`/mnt/afs/yangsen1/projects/mle-rsi-experiments`。
 Dream-RSI 是本仓库的 submodule，在霖睿 `3ccf88a209604795f75ec2e0f2f40352dc80b620` 上建立 `mle-task-adapter` 分支；rsi-eval 固定在 `991d855a8c1cc71ea11a7f1512db54a564e5fd13`。适配提交目前只在本地，尚未推送远端。
 
@@ -92,3 +128,7 @@ set -o pipefail
 `./experiment upgrade-budget --run-dir RUN` 是显式迁移命令：必须获得实验控制锁，备份原冻结配置与来源版本，保留账本原样。只将能证明未进入transport的本地LimitReached请求恢复为可发送，并归档对应的停止结果，保留已完成轮次与候选。它不调用付费模型。其他源码变化不会被这个迁移命令接受。
 
 pilot-003当前运行结束后，由已安排的本地修复进程自动执行以上迁移。修复进度见该run的 `budget-fix-apply.log` 和 `budget-fix-apply-status.json`。完成后在原主仓库执行 `./experiment dev --run-dir /mnt/afs/yangsen1/runs/dream-rsi-mle-gemini-pilot-003` 续跑；不要重新init或新建目录重置预算。
+
+## Spooky 单题 500 候选实验
+
+已准备独立冻结目录 `/mnt/afs/yangsen1/projects/mle-rsi-spooky-longrun`。启动、可视化、资源预算及 solver 转移协议见 [SPOOKY_EXPERIMENT.md](SPOOKY_EXPERIMENT.md)。使用 `scripts/start-spooky.sh`，不要用旧的全 22 题 run 命令。
