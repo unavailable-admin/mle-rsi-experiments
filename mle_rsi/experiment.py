@@ -13,6 +13,7 @@ from . import REPO, WORKSPACE
 from .backend import MLEBackend, task_ids
 from .common import LimitReached, read, sha, write
 from .provider import GeminiTransport, load_key
+from .gpt_provider import GPTTransport
 from dream_rsi.campaign import Campaign
 from dream_rsi.codec import digest, plain
 from dream_rsi.config import (BenchmarkProtocol, BudgetConfig, CampaignConfig, HistoryInputConfig,
@@ -38,9 +39,13 @@ def initialize(root, spec, mode='real'):
     root.mkdir(parents=True,exist_ok=False)
     if len(spec['development_tasks']) != len(set(spec['development_tasks'])) or not set(spec['development_tasks']) <= set(task_ids()):
         raise ValueError('Invalid development task list')
+    if spec.get('first_batch_fixes') and mode!='mock':
+        from .preparation import prepare_assets
+        prepare_assets(root,spec,task_ids())
+    assets={str(p.relative_to(root)):sha(p) for p in sorted(list((root/'prepared').glob('*/manifest.json'))+list((root/'runtime').glob('*'))) if p.is_file()}
     # Separate verification runs can never be resumed as paid experiments.
     write(root/'frozen-config.json',{'spec':spec,'mode':mode,'created_at':time.time(),
-          'source_hashes':source_manifest(),'final_tasks':task_ids(),
+          'source_hashes':source_manifest(),'asset_hashes':assets,'final_tasks':task_ids(),
           'submodules':{name:subprocess.check_output(['git','rev-parse','HEAD'],cwd=REPO/'third_party'/name,text=True).strip()
                         for name in ['dream-rsi','rsi-eval']}})
     return root
@@ -50,6 +55,8 @@ def frozen(root):
     value=read(Path(root)/'frozen-config.json')
     if value['source_hashes']!=source_manifest():
         raise RuntimeError('Sources changed after initialization; use a new run directory')
+    for path,expected in value.get('asset_hashes',{}).items():
+        if sha(Path(root)/path)!=expected:raise RuntimeError('Frozen validation/runtime asset changed: '+path)
     return value
 
 
@@ -80,6 +87,9 @@ def campaign(root, task, phase, *, initial_source=None):
     spec['execution']['cpu_ids']=task_cpu_ids(spec,task,phase)
     s=spec['search'];model=spec['model']
     is_dev=phase=='development'
+    if initial_source is None and spec.get('first_batch_fixes'):
+        from .repair_policy import repair_best_first_source
+        initial_source=repair_best_first_source(width=spec['search']['workers'])
     prefix='dev' if is_dev else 'final'
     cid=f'{prefix}-{task}'
     mock_model=mode!='real'
@@ -104,10 +114,15 @@ def campaign(root, task, phase, *, initial_source=None):
           scheduling_betas=(.6,),replay_scenarios=s['replay_scenarios'],replay_parallelism=1,
           persistent_policy_workers=True,policy_decision_timeout_s=8,policy_memory_bytes=1024**3,
           policy_view_diagnostics='summary',beta1=.005,beta2=.0025,
+          policy_bounded_repair=spec.get('mandatory_bounded_repair',False),
           benchmark=BenchmarkProtocol(profile='smoke',timing_runs=1),
           history_input=HistoryInputConfig(mode='evidence',discovery_tokens=150000,developer_tokens=200000),
-          discovery_model=mc,developer_model=replace(mc,max_output_tokens=model['developer_output_tokens']),
-          budget=BudgetConfig(max_discovery_calls=100,max_developer_calls=30,max_tokens=3000000))
+          discovery_model=mc,developer_model=replace(mc,max_output_tokens=model['developer_output_tokens'],
+              model=mc.model if mock_model else model.get('developer_name',model['name']),
+              reasoning_effort=model.get('developer_reasoning_effort',model['reasoning_effort'])),
+          budget=BudgetConfig(max_discovery_calls=max(100,batches*s['workers']*(s['development_rounds'] if is_dev else 1)),
+                              max_developer_calls=max(30,s['development_rounds']*(s['policy_versions_per_round']-1)),
+                              max_tokens=s.get('max_tokens',3000000)))
     backend=MLEBackend(task,root,spec,phase,mock=mode=='mock')
     def discovery_responder(messages,request_id):
         if mode=='smoke':
@@ -123,7 +138,8 @@ def campaign(root, task, phase, *, initial_source=None):
                developer_responder=developer_responder if mock_model else None)
     if not mock_model:
         load_key(spec)
-        transport=GeminiTransport(root,spec,task,phase,cid)
+        transport_class=GPTTransport if model.get('transport')=='gpt-chat' else GeminiTransport
+        transport=transport_class(root,spec,task,phase,cid)
         c.agent.client.transport=transport
         c.developer.client.transport=transport
     return c
@@ -145,10 +161,18 @@ async def run_task(root, task, phase, policy=None):
     write(out/'status.json',result)
     try:
         try:
-            await c.run()
+            deadline_path=root/'phase-timing.json'
+            deadline=read(deadline_path).get(phase,{}).get('deadline') if deadline_path.exists() else None
+            async with asyncio.timeout(max(0,deadline-time.time()) if deadline is not None else None):
+                await c.run()
             result['state']='completed'
-        except (LimitReached,BudgetExceeded,ExternalUnknown) as exc:
+        except (LimitReached,BudgetExceeded,ExternalUnknown,TimeoutError) as exc:
             result.update(state='stopped',reason=f'{type(exc).__name__}: {exc}')
+        except Exception as exc:
+            # A failed task must not prevent later tasks in its resource lane from running.
+            import traceback
+            (out/'error.log').write_text(traceback.format_exc())
+            result.update(state='failed',reason=f'{type(exc).__name__}: {exc}')
         best=best_candidate(c)
         result.update(finished_at=time.time(),completed_rounds=(c.checkpoints.load(c.config.campaign_id) or {}).get('completed_rounds',0),
                       candidate_nodes=len(c.store.list('node')),usage=c.ledger.summary())
@@ -188,7 +212,10 @@ async def freeze_policy(root):
             c=campaign(root,task,'development');cases.append((task,c))
             for _,p in c.store.list('policy'):
                 if p.status=='valid' and p.evaluation is not None:sources[digest(p.source)]=p.source
-        initial=best_first_policy_source(width=spec['search']['workers'])
+        if spec.get('first_batch_fixes'):
+            from .repair_policy import repair_best_first_source
+            initial=repair_best_first_source(width=spec['search']['workers'])
+        else:initial=best_first_policy_source(width=spec['search']['workers'])
         sources[digest(initial)]=initial
         rows=[]
         for key,source in sorted(sources.items()):
@@ -206,6 +233,7 @@ async def freeze_policy(root):
         chosen=max(eligible,key=lambda r:(r['mean_replay_value'],r['source_hash']==digest(initial)))
         path=root/'frozen-policy.py';path.write_text(sources[chosen['source_hash']])
         result={'created_at':time.time(),'policy_sha256':sha(path),'chosen':chosen,'candidates':rows,
+                'bounded_repair_guard':spec.get('mandatory_bounded_repair',False),
                 'selection':'equal mean replay value across development tasks; only public-validation histories',
                 'private_scores_used':False,'mode':record['mode'],
                 'development_tasks':spec['development_tasks'],'final_tasks':record['final_tasks']}

@@ -48,11 +48,21 @@ def main():
         task_data['budget'].update(wall_seconds=timeout,gpu_count=int(gpu is not None))
         write(directory/'task.json',task_data)
         environment=Path(execution['python_environment'])
+        public=WORKSPACE/'data/mlebench'/task/'prepared/public'
+        prepared=root/'prepared'/task
+        validation=read(prepared/'manifest.json') if spec.get('first_batch_fixes') else None
+        if validation and validation.get('sanitized_public'):public=prepared/validation['sanitized_public']
         pairs=[(environment,environment,True), (WORKSPACE/'envs/mle-lite-agent',WORKSPACE/'envs/mle-lite-agent',True),
                (WORKSPACE/'tools/python',WORKSPACE/'tools/python',True),
-               (WORKSPACE/'data/mlebench'/task/'prepared/public',Path('/data'),True),
+               (public,Path('/data'),True),
                (directory/'agent.py',Path('/agent.py'),True),(directory/'task.json',Path('/task.json'),True),
                (work,Path('/output'),False)]
+        if validation:
+            pairs.append((root/'runtime',Path('/runtime'),True))
+            pairs.append((prepared/'manifest.json',Path('/validation/manifest.json'),True))
+            if validation['split_file']:pairs.append((prepared/'split.csv',Path('/validation/split.csv'),True))
+            for target,source in validation.get('data_overrides',{}).items():
+                pairs.append((prepared/source,Path('/data')/target,True))
         for source,target in [(execution.get('pretrained_models'),'/models/pretrained'),(str(WORKSPACE/'cache/torch'),'/models/torch')]:
             if source and Path(source).exists():pairs.append((Path(source).resolve(),Path(target),True))
         mounts=[{'Source':str(s),'Target':str(t),'Type':'bind','ReadOnly':ro} for s,t,ro in pairs]
@@ -62,7 +72,8 @@ def main():
         key=str(directory.relative_to(root))
         budget.start_execution(key,task,phase,timeout+5,gpu is not None)
         try:
-            result=measure_container([str(environment/'bin/python'),'/agent.py','--task','/task.json'],
+            command=[str(environment/'bin/python'),'/runtime/mle_runtime.py','/agent.py'] if validation else [str(environment/'bin/python'),'/agent.py','--task','/task.json']
+            result=measure_container(command,
                          '/output',env,directory/'execution',mounts,timeout,cpu,gpu)
         except BaseException:
             # Retain the full reservation on unknown execution accounting.

@@ -1,0 +1,242 @@
+{
+  "run": "dream-rsi-gpt-firstbatch-guarded-001",
+  "source_hashes": {
+    "examples/leaf_fixed_smoke.py": "8f5ab5592dfe498a6e95ed4413ebd1e22e9dec9c866b1d321e1fd1b10e9330f5",
+    "examples/leaf_smoke.py": "6d95306eb743230137fbeafcf17cadfa709144e0ff0ee63a5eb1d2fad20ea2a4",
+    "mle_rsi/__init__.py": "905a8bbf076a31126f95e8f2799d629a3135b7feb489c2e9ace7449b14b1eaab",
+    "mle_rsi/__main__.py": "a735bc06866df88a0ccbf929d57ec1289095d28fa77dddee411f55412be43eed",
+    "mle_rsi/backend.py": "9167301c07ff68cf79c3b299e8d558a63c0b5068401b6a9031009472f0f0e399",
+    "mle_rsi/candidate_runtime.py": "9145523988f4df9a6325dcd7ea38ee4253564309ca932292ef49471215244455",
+    "mle_rsi/common.py": "322a045684380e9c115431997f5194b02126e2ef91cb274c8bec500535bee09b",
+    "mle_rsi/execute.py": "ff54ebd68c5102b3367692142a0d9728cdb35a0170723b1900125041c7d6ce12",
+    "mle_rsi/experiment.py": "8ac8eff915b9bb6be014296f58ec427ec8bf7e377c9847cb5613d2bf83efb862",
+    "mle_rsi/gpt_provider.py": "70d28377e7994b0daae83e06e29c9ac0bfcb2e235821b9b93697bb97cd463b68",
+    "mle_rsi/preparation.py": "cd4ca8eb6db5a2b14e1c2ab9dbdcc5ec22da37724b38e036d38aad5af6727212",
+    "mle_rsi/provider.py": "776858eee3c53cae64c9262fdf5e55d310b123f563bec9f0c083561aaf04cf4a",
+    "mle_rsi/repair_policy.py": "e0a05a5af790afe029cd1e0137b0a7c9f202397eabdf859050a1f475166e379a",
+    "mle_rsi/runtime_inventory.py": "dfa9ffeb3e2269a20379812966c31e44c42bb9a0ef80d9fd623b82e62d59f857",
+    "mle_rsi/supervisor.py": "bb19e253a6c847ca6bab8683f7c40327af73f84757d57d144810ddd4070aeb90",
+    "mle_rsi/validation.py": "410c387670b8793397d79377b9958c547cbf47ddb468343ace053ffe972795e8",
+    "third_party/dream-rsi/my_rsi/prompts/exploration_prompt.txt": "83f4a109f8d12f445b98fa874dc3d24d85d52a032ec012eedcc955c33f4c9999",
+    "third_party/dream-rsi/my_rsi/prompts/replay_policy_improvement_prompt.txt": "8214ffd52dda82a3b5263a5a97829c2be44270f35496567c02af175896756de3",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/__init__.py": "5aa3b1c1f6ee24f134dfca3997a983f88e8640a216d85b0935d1a7678a3fae20",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/__main__.py": "76fa916e93e0ae1a6c1bb51dcc0bcf289c014e9f760a47165f8a84401ccf41d7",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/_candidate_worker.py": "0fef7e1ead9b3ac669bc7b09c45c89059ede27837d394cbb639e8bbf4805c9fd",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/_grid_worker.py": "10c978e86eecee186183ce387523c727c01f61665a2e489a111dd5c736b7dfd6",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/_policy_worker.py": "8560ea3850bbfd379bbf7f56e548d65981acec55900a7c815cf88d994f034295",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/_reference_worker.py": "eb92fdb4efb1e9b9e88ddb5e1bbc874f6bf5bee5fea13f76b2493b35504bf05e",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/appendix.py": "f2334790c710d3a178de588ebfa3cb967500d8c0ff93b72095e79350b30311f3",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/campaign.py": "fb3c2f49dd40954374f460a6133eadabe0c230a175dc84ab6fb8edd476abc0ae",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/cli.py": "e9e2e355d887d6c25fdc30ccc956df99f26cea21d19f2785855b4451be5dda9b",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/codec.py": "2368244dd6acfcaca10aec7bb97e432c9509f6aceee8bbebd50a93a36e0629fc",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/config.py": "4e0c8b8c477c68a2f9d96ef872c437157bee3b052e87ede9a331650f43811e90",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/context.py": "552424de7dfe317a648ae5496d7e81daed5d350699769f5966f417cfe6e39435",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/counterfactual.py": "21cc7f2f7dbbaec4d665184603fb928d1cf887b3c6c4a2fedaf38edacceafe57",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/cpp.py": "966a712652d3014ffff420dbc2ea188200eebdc6b2f980a7ccb8486e31cc19d9",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/credentials.py": "413b762bb876d6379989178c443f393b05520574e1057f3292edd3cf3fc46ff2",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/data/simpletes_evaluator.py": "5884ab243be05b8b673116bd1bcb7e92d3d2f6a4c10213809356adadf4fc2143",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/datasets.py": "9287ea52dd5e32649721e52046316c778b351173f19c752b155654d7171655f0",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/developer.py": "30333ce19a840b69b3521d25029cef58826b9c36a6aba815abf5f7f8c20d8109",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/discovery.py": "77e08e4fa1a18a83ede8f33a2c909ad63018dc450cf30cb1857655bde65fb511",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/downstream.py": "3ef1efbc3f3d66aff58a82260a9c0d27cd52cb57906519e6ec24406ecec950bd",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/errors.py": "69aaa9f633c4902555fcd6f44b4a283ceb1312b95834869d3458fbc6e189c743",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/evaluation.py": "86c85c4cbddd92da056cc0ee107cebd64920f8af4ca0ef3a8e7135e24b0be5b9",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/evidence.py": "916d1a39385aaceb12519b9a119f56e0033530563feefe30ec809ef2e597b808",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/evidence_context.py": "eb12ba6940e39702aa0aa55d61c50bc020763e1c644152e398429eed074b1d25",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/grid_api.py": "0a205cdf53957f1478ed694773d8f3272d55379cc3fe16f2b7702d92d4aa004e",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/grid_campaign.py": "44c077439f4c71f383d83c7528514bd9be280b133e25689b3d2479b905085aad",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/grid_runtime.py": "485409faa5ce00fe7d0ec4ae4a6d451fa4de781a9dda92bc760a14ac8b174e77",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/holdout.py": "70a691b33a53d0af490d670e72a482f2dbfab15e971fde86af2ca03def95310b",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/hotspots.py": "c95917c0b4fdd5acc7b795deeb0c024b816788250f6649e7982333a7716a32bd",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/lineage.py": "8f7120149409016e4ca3a7f9b729dcf2bb8c3d3c6d6192b1d5af8df25987b5dc",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/llm.py": "b86fc55720d06b33c0cb30dc539cf46eb0088f27bc7721052dae3cf185dc75bc",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/model_api.py": "264d2207b331284fa4b07ac33083a97060b87c99409e3b95193721eb6ccd0479",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/models.py": "3f53a869d837a5676cbbaf38ee3c0d8860f812a1d3989441af68d093519b7759",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/online.py": "f26642dae9ba73f740f21e212bf0b3fff644dc334aae3fd6be7fbe42879ed65e",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/policy.py": "04586049fb0bdd6de0a7c766e3ed23fc09e384800c2bcc9810e196eb38987101",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/policy_runtime.py": "7a6585c6493bc62e263021318d20e38d5485ac801008b233a7d27417f495fd55",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/progress.py": "f8ea0cf3002d53de36bc1aae9229862ccc916e452cc80dad8cb83bc7c9186153",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/prompting.py": "7d0d4ee420cb7f4e2743439db51c483fa296041f52fa58d3d7473d1e3464914e",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/readable.py": "cab698652f5af59e39c56b1af71ade9316bcd8c922c4d6daaa5f8407b2088515",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/registry.py": "b46a254a6fce9d473d39a39b85701a6535588bb7cb1488ef6d1c7f28e2e849b6",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/repair_guard.py": "b0b390a21c7504f95e0248e32586f0bfa7260d9400507a04713548b9764044cf",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/replay.py": "3f64b03c63c404f7c95898771f595a15ba20e7f716b5d7e8874fbde538fd4690",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/reporting.py": "7f1c4ba2557ad0c4d09b9eb96f11942a8e10f60b045214918209b8ac2d93c48a",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/resources.py": "ca8ddc67ffc09b2ae1c5b94dcd8c41c0210afd0a74762950ee762e2290bf9f13",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/runner.py": "9e5e805b2a712ce758382b9a74739b3a66259c2828ab6077e480b17a226db1e5",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/sandbox.py": "a00a68035db020413b7d1f2aa1e74ebf8ff198e6233c29bf16d37a7882955342",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/seed.py": "a777041f0059f73560a780931f4cb5183c31296e9a2384ad9184ec95d2118e14",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/storage.py": "8dfb5196629f7160dfeae4f0dbfa4bdd2f5796f21c29dfc781733d002d831a44",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/task_contracts.py": "1ed2279d4b0811cc9c3c770afad521db1f8571aa5be79c9f0dc1f9838f116dc3",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/testing/__init__.py": "593bae1ca791a97185a83f4234dbd773243fbc7669340f2af44b5d1c9027414c",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/testing/__main__.py": "f042e493f25bac2f617369ae6fd18014a211f8f92134b9fa9673bda3ef7e9dca",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/testing/_baseline_worker.py": "af210d5296fa6c71a0a2533bd57a8a1272728f47a182ff3dc84b3bee01054b16",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/testing/_duality_worker.py": "d34005b8d158864aec9a7e355e81a3de963910f4b5b42bb85fa6db37a526e936",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/testing/_objective_worker.py": "8f804612401e2c4d700fd8e433277dd49f2eba8cae97ae23376a8d76c3e55497",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/testing/baselines.py": "c769ce7ccbf8bc08f9f499bb75aae1f9f89b55970518bf167181199e9bb4cc0b",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/testing/comparison.py": "c53203b778047291763e74f46dfd5c2349f81553745fdc7546043fa866e5ee79",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/testing/duality.py": "c523137c6fbf3d109b7988ace34d456d9de01f7d8b7fb1d9a942c1a143fc1dca",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/testing/evaluate.py": "1d5d2cec4370808ee77591a8ba42ed23f637a8e7368d13040ccf59391de351f6",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/testing/manifest.py": "c03c4e49f79435a19cc2c178e7a171da594ad20eb8c5d9ee2d0046c564ee4490",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/testing/objective.py": "99778790928f1238497e0686b0a594237d007b1d4d7f33bd0fad1c092badb672",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/testing/phased.py": "6e765bc501d1ece36a25aeddc9c987aae7942e0c72a3eeadd2983e473dd81992",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/testing/suite.py": "cbc399f36e56dd657007b5ff33bf839c4619a696eee8db9bcecf2c2741ab4f5c",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/tokens.py": "265fe8eb265634644ee69b4c043495a41fe5c905fb582de04f0857608ff05ddc",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/tree.py": "f6f974d584762478750b330a2069f3cbe2816d673c5120bf9b8d34092d30100f",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/tuning.py": "277f5fbe3752fe9bd5baecac8e22f6a3b69924f8636d194db0df0de28c36c8c0",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/web/__init__.py": "fced1e5418adfb98c3c255dc8b82fc837e70c98beec6c3a713e8f905ea56fea9",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/web/__main__.py": "fd1edfb2b9b053b04bd2c9caed7df615b5cc179ff2646127fbad2afb93d24945",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/web/context.py": "632a4734677e53e037cfc2536882c5d3613db50c68e48059df6d6bcd862f148a",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/web/data.py": "bd7bd27091aa45741f831fc6812c490678fe25ca5f07f86f2c71beddbd2d54a1",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/web/pricing.py": "0967c14d15193123f2eada0ae7a9cdef4fd0e771b5827bcddbbf3b81439741c6",
+    "third_party/dream-rsi/my_rsi/src/dream_rsi/workspaces.py": "38a6b6f9055ab8d1a2d520b768f565f04362f7aca2f289e460cb6cfe740888b0",
+    "third_party/rsi-eval/src/bench_container.py": "431ff112fb3052c8ee4e145fa15adbb2c30a7ba0fe39141a89fd355e1fbcfd29",
+    "third_party/rsi-eval/src/bench_resources.py": "b7d08ab0fbe5141fa6b74b382aaed73e2a3624504c87f518f4537fb44298c0ea",
+    "third_party/rsi-eval/src/docker_accounting.py": "47b02dceabbf2de9de667ff399451d13efdb6941bbadd2d36d644f2055f087cc",
+    "third_party/rsi-eval/src/mle_grade.py": "a598e435f84bba3f2b420a6b4dea3d5b05ef8ba14d28eb6f8209d633c91589dd",
+    "third_party/rsi-eval/src/run_ale.py": "1c2e65a84702dfa149ae7c0b465b84d6f5835a2d68c203dcbd443ccfcc810b96",
+    "third_party/rsi-eval/src/run_fml.py": "0cae4fe43a00357834afdcf66a8b7522950e233d4e010912fa6561492da1b51b",
+    "third_party/rsi-eval/src/run_mle.py": "812029f95e796e415d83d12e138e9ebf530d3f3259726d2b5632887bf2f47e81",
+    "third_party/rsi-eval/src/settings.py": "b2d4cccfa90cf829db81cad2b760a3c1ba950063aa146d2d46c09cc8f350289c",
+    "third_party/rsi-eval/src/suite.py": "dcd219e369b7317c25ffdf7bf49e9f6641920d7d2a677c727d89f5704b8a4847"
+  },
+  "config": "configs/guarded-lite22-12of22.json",
+  "valid": 22,
+  "medals": 12,
+  "tasks": 22,
+  "rows": [
+    {
+      "task": "aerial-cactus-identification",
+      "valid": true,
+      "medal": true,
+      "score": 1.0
+    },
+    {
+      "task": "aptos2019-blindness-detection",
+      "valid": true,
+      "medal": false,
+      "score": 0.90288
+    },
+    {
+      "task": "denoising-dirty-documents",
+      "valid": true,
+      "medal": true,
+      "score": 0.0178
+    },
+    {
+      "task": "detecting-insults-in-social-commentary",
+      "valid": true,
+      "medal": true,
+      "score": 0.91105
+    },
+    {
+      "task": "dog-breed-identification",
+      "valid": true,
+      "medal": false,
+      "score": 0.47815
+    },
+    {
+      "task": "dogs-vs-cats-redux-kernels-edition",
+      "valid": true,
+      "medal": true,
+      "score": 0.02832
+    },
+    {
+      "task": "histopathologic-cancer-detection",
+      "valid": true,
+      "medal": true,
+      "score": 0.98628
+    },
+    {
+      "task": "jigsaw-toxic-comment-classification-challenge",
+      "valid": true,
+      "medal": false,
+      "score": 0.97949
+    },
+    {
+      "task": "leaf-classification",
+      "valid": true,
+      "medal": false,
+      "score": 0.05552
+    },
+    {
+      "task": "mlsp-2013-birds",
+      "valid": true,
+      "medal": true,
+      "score": 0.90779
+    },
+    {
+      "task": "new-york-city-taxi-fare-prediction",
+      "valid": true,
+      "medal": false,
+      "score": 4.01839
+    },
+    {
+      "task": "nomad2018-predict-transparent-conductors",
+      "valid": true,
+      "medal": true,
+      "score": 0.06228
+    },
+    {
+      "task": "plant-pathology-2020-fgvc7",
+      "valid": true,
+      "medal": true,
+      "score": 0.97726
+    },
+    {
+      "task": "random-acts-of-pizza",
+      "valid": true,
+      "medal": true,
+      "score": 0.69222
+    },
+    {
+      "task": "ranzcr-clip-catheter-line-classification",
+      "valid": true,
+      "medal": false,
+      "score": 0.78044
+    },
+    {
+      "task": "siim-isic-melanoma-classification",
+      "valid": true,
+      "medal": false,
+      "score": 0.68636
+    },
+    {
+      "task": "spooky-author-identification",
+      "valid": true,
+      "medal": false,
+      "score": 0.35491
+    },
+    {
+      "task": "tabular-playground-series-dec-2021",
+      "valid": true,
+      "medal": true,
+      "score": 0.96185
+    },
+    {
+      "task": "tabular-playground-series-may-2022",
+      "valid": true,
+      "medal": false,
+      "score": 0.99016
+    },
+    {
+      "task": "text-normalization-challenge-english-language",
+      "valid": true,
+      "medal": true,
+      "score": 0.99127
+    },
+    {
+      "task": "text-normalization-challenge-russian-language",
+      "valid": true,
+      "medal": false,
+      "score": 0.97551
+    },
+    {
+      "task": "the-icml-2013-whale-challenge-right-whale-redux",
+      "valid": true,
+      "medal": true,
+      "score": 0.97954
+    }
+  ],
+  "note": "Observed result of one run, not a guarantee for new model generations. Runtime files match the original frozen source hashes."
+}

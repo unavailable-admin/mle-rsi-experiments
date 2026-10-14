@@ -41,7 +41,8 @@ def preflight(spec):
             headers={'Authorization':'Bearer '+os.environ[spec['model']['api_key_env']]})
         response.raise_for_status()
         ids={row['id'] for row in response.json()['data']}
-        if spec['model']['name'] not in ids:
+        required={spec['model']['name'],spec['model'].get('developer_name',spec['model']['name'])}
+        if not required <= ids:
             raise RuntimeError('Configured model absent from provider model list')
     checks['authenticated_model_list']=True
     checks['generation_api_tested']=False

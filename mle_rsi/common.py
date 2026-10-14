@@ -60,6 +60,9 @@ class Budget:
             phase_total = sum(r.get('charged_usd', r['reserved_usd']) for r in rows if r['phase'] == phase)
             cap = self.spec['api_usd_per_task']
             dev_cap = self.spec['development_api_usd_per_task']
+            global_cap = self.spec.get('api_usd_total')
+            if global_cap is not None and sum(r.get('charged_usd', r['reserved_usd']) for r in s['api'].values()) + dollars > global_cap:
+                raise LimitReached('Experiment API ceiling reached (including all pending reservations)')
             if total + dollars > cap or (phase == 'development' and phase_total + dollars > dev_cap):
                 raise LimitReached('Per-task API ceiling reached (including reservations and earlier phases)')
             row = dict(task=task, phase=phase, state='pending', reserved_usd=dollars,
