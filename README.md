@@ -1,136 +1,63 @@
-# Dream-RSI × MLE-bench 首轮实验
+# Dream-RSI × MLE-bench
 
-## 第一批修复实验（2026-10-14）
+主仓库的 `main` 是统一开发入口，包含 guarded Lite22 和 Spooky 单题累计搜索。历史实验由 tag 固定；不要用 main 的新代码覆盖正在运行的冻结副本。
 
-本工作区已同步修正版实现；当前实跑冻结源码保留在 `/mnt/afs/yangsen1/projects/mle-rsi-firstbatch-guarded`，结果目录为 `/mnt/afs/yangsen1/runs/dream-rsi-gpt-firstbatch-guarded-001`。首轮源码快照及完成核验保存在首轮结果与 verification 目录，历史账本未改动。
+| 版本 | 用途 |
+|---|---|
+| `guarded-lite22-12of22-20261014` | 实测 **22/22 有效、12/22 得牌（54.5%）** 的准确运行源码与实际配置 |
+| `spooky-solver-500-ready-v1` | 单题 500 候选准备版，题内串行 |
+| `spooky-solver-500-ready-v2` | 单题 500 候选并发版，5 路 API + 5 路候选执行 |
+| `main` | 合并实验实现和原远端安装能力后的持续开发版本 |
 
-修正版还在接受候选前按公开 sample submission 检查最终提交的列名、完整 ID、行数和数值范围，防止公开验证有效但最终 CSV 无效。该检查不读取测试标签。
+54.5% 是一次完整运行的观测值。重新调用模型生成候选，即使使用相同源码和配置，也不保证相同分数或奖牌数。准确版本和逐题结果见 [来源说明](docs/provenance.md) 与 [成绩记录](docs/guarded-lite22-result.json)。
 
-修正版配置为 `configs/gpt-firstbatch-guarded-dev4-lite22.json`。沿用 GPT halfday-001 的模型、
-四题开发及 Lite22 最终任务、每题开发 32 / 最终 4 个候选；新实验 API 总上限 $20，
-独立保留账本。开发执行累计上限 5.5 小时/题，总执行及 GPU 分配上限 23,460 秒/题；
-开发阶段墙钟上限 6 小时、全程 12 小时，不因恢复而重置。
+## 安装
 
-新增协议 v2：初始化时从公开训练数据生成固定验证清单，候选通过只读
-`mle_runtime` 辅助模块读取。宿主独立读取预测 CSV，用自身保存的公开标签重算
-22 题指标；不再以候选自报分数选择解法。按任务规则规范图像 ID、按患者/句子/图像
-分组，单样本类别保留在训练集。Pizza 的事后字段从候选可见数据中移除，SIIM 的
-诊断与良恶性字段从输入 CSV 中移除。固定划分、标签和运行时清单均保存哈希。
-
-运行错误提供具体异常、日志尾部、资源记录和失败源码；初始搜索策略提供一个占用
-正常候选名额的修复入口，失败修复不继续形成无界修复链。首轮实测发现学习策略会
-删除该入口；修正版用 `mandatory_bounded_repair=true` 将约束固定在宿主执行层，
-在线与离线回放一致执行。每批最多修复一个尚未扩展的失败节点，每个失败节点最多
-修一次，失败的 debug 节点不继续修复；后续批次补齐不会撤销约束。提供实际安装包版本、
-本地权重清单、显式 ResNet50 加载器、训练内部校准划分和阶段/模型记录函数。
-
-边界：独立评分验证预测指标与样本身份，不能证明任意生成程序内部从未使用验证
-标签训练。内部调参/校准必须使用训练内部划分。校验后的公开分数、训练/验证代码
-和运行记录仍需共同审计。本轮包含验证协议、错误反馈和修复入口的组合变化，
-与旧实验比较不能被解释为单因素因果收益；部分固定划分也与旧候选自定划分不同。
-
-首轮与修正版共用本次授权的 $20 API 总额；修正版启动前必须从上限扣除首轮已结算
-费用和所有未决预留，不删除或重置旧账本。原配置保留用于重现首轮。
-
-启动修正版：`./experiment init --config configs/gpt-firstbatch-guarded-dev4-lite22.json --run-dir RUN`，
-然后 `/mnt/afs/yangsen1/envs/dream-rsi-mle/bin/python -m mle_rsi.supervisor --run-dir RUN`。
-初始化包含公开验证数据准备，不发起付费请求。
-
-主仓库：`/mnt/afs/yangsen1/projects/mle-rsi-experiments`。
-Dream-RSI 是本仓库的 submodule，在霖睿 `3ccf88a209604795f75ec2e0f2f40352dc80b620` 上建立 `mle-task-adapter` 分支；rsi-eval 固定在 `991d855a8c1cc71ea11a7f1512db54a564e5fd13`。适配提交已发布到 Dream-RSI 远端的 `mle-spooky-solver-500` 分支；本项目实验版本发布到 `unavailable-admin/mle-rsi-experiments` 的 `spooky-solver-500` 分支，正式实验代码以 `spooky-solver-500-ready-v2` tag 为准。
-
-## 启动
-
-当前机器已安装独立 Python 3.12 环境 `/mnt/afs/yangsen1/envs/dream-rsi-mle`；依赖版本见 `requirements.lock`。配置引用本机 MLE 数据、Docker 镜像、训练环境和只读模型缓存，跨机器需先适配路径。
+需要 Python 3.12、Linux、bwrap、Docker + Sysbox、已准备的 MLE-bench 数据和候选训练环境；GPU 任务还需要 NVIDIA 容器支持。仓库不自动下载数据或训练镜像。
 
 ```bash
-cd /mnt/afs/yangsen1/projects/mle-rsi-experiments
-./experiment preflight
-RUN=/mnt/afs/yangsen1/runs/dream-rsi-mle-gemini-pilot-001
-./experiment init --run-dir "$RUN"
-./experiment dev --run-dir "$RUN" 2>&1 | tee "$RUN/development.log"
+git clone --recurse-submodules git@github.com:unavailable-admin/mle-rsi-experiments.git
+cd mle-rsi-experiments
+./scripts/bootstrap.sh
+export RSI_EVAL_WORKSPACE=/path/to/mle-workspace
+# 按所选模型导出 RSI_GPT_API_KEY 或 RSI_GEMINI_API_KEY。
 ```
 
-建议在 tmux 中执行训练。另开终端启动可视化：
+`.env.example` 是说明模板，不会自动加载。入口优先使用 `MLE_RSI_PYTHON`，否则使用仓库 `.venv/bin/python`；在原实验服务器兼容既有 controller 环境。配置内 `${RSI_EVAL_WORKSPACE}` 在读取新配置时展开，不修改已有运行配置。
+
+工作区需要 `projects/mle-bench`、`data/mlebench/<task>/prepared/public`、候选 Python 环境、`envs/mlebench` 官方评分环境及 `tools/python` 容器运行时。GPU 配置、Docker 镜像、环境路径和预训练模型缓存需要匹配本机。GPT 实验配置保留原服务器路径，迁移时复制成 `*.local.json` 修改；`configs/gemini-dev4-lite22.json` 保留可展开环境变量的通用示例。
+
+## Guarded Lite22
+
+开发阶段：4 题，每题 4 轮 × 4 批 × 2 候选，轮间更新策略。最终阶段：冻结策略，在 22 题各新搜 2 批 × 2 候选，不进行 offline。最终 private 分数不回传搜索。
+
+在独立 checkout 使用准确历史版本复跑：
 
 ```bash
-cd /mnt/afs/yangsen1/projects/mle-rsi-experiments
-./experiment web --run-dir /mnt/afs/yangsen1/runs/dream-rsi-mle-gemini-pilot-001 --port 18766
+git checkout guarded-lite22-12of22-20261014
+git submodule update --init --recursive
+# 先按本机环境检查配置和可用 CPU/GPU。
+./experiment init --config configs/guarded-lite22-12of22.json --run-dir /path/to/new-run
+/path/to/controller/python -m mle_rsi.supervisor --run-dir /path/to/new-run
 ```
 
-查看服务器 `http://127.0.0.1:18766`。本地电脑可先运行 `ssh -N -L 18766:127.0.0.1:18766 用户名@服务器`，再打开本地相同地址。界面来自霖睿仓库，已适配 MLE 指标和执行诊断：选择 campaign 后查看搜索树、候选代码、公共验证指标、stdout、容器资源记录、策略修改及 replay。根节点是未训练占位节点，不代表模型成绩。
+该 tag 的配置记录实际 API 总上限 **$17.843318**（原合计 $20 已扣除 preceding firstbatch 消耗）；每任务 $5、开发每任务 $3。不要把历史“两个运行合计 $20”的约束误读成一个新运行会自动扣除另一个运行的账本。
 
-四题完整开发结束后，先检查界面和状态，再由你启动冻结与最终评估：
+main/v2 也能使用 guarded 配置：该配置不设置题内并发，因此保留 API 和训练串行。修正后的提示词等与准确历史源码有差异，属于同方案复跑，不是逐字节复现。默认配置 `gpt-firstbatch-guarded-dev4-lite22.json` 的新运行上限为 $20；准确历史有效配置为 `guarded-lite22-12of22.json`。
+
+## Spooky 单题
+
+20 轮 × 5 批 × 5 候选，累计 500 个候选名额，每轮 offline；跨轮继承全部树节点。搜索结束后直接测试 public 选出的检查点 solver/submission，不另开 final 搜索。5 路训练每路 8 CPU、32 GiB，总计 40 CPU、最多 160 GiB，无 GPU；CPU 锁覆盖物理核兄弟线程。
+
+当前服务器已固定的运行副本和启动命令见 [单题说明](SPOOKY_EXPERIMENT.md)。学习曲线端口 18768，原生树/代码/策略端口 18769；它们读取同一个运行目录。已有实验只能使用自身冻结源码恢复。
+
+## 验证与边界
+
+宿主固定 public 划分、独立重算预测分数并校验 submission。它不能单凭输出证明任意生成代码内部完全没有验证泄漏，需结合代码审计。各版本是组合改动和单次随机生成实验，得牌变化不能直接解释为单一改动的因果效果。
 
 ```bash
-./experiment status --run-dir "$RUN"
-./experiment freeze --run-dir "$RUN"
-./experiment final --run-dir "$RUN" 2>&1 | tee "$RUN/final.log"
+/path/to/controller/python -m pytest tests/test_experiment.py tests/test_provider.py tests/test_first_batch.py tests/test_gpt_halfday.py tests/test_repair_guard.py tests/test_single_task.py tests/test_parallel_candidates.py tests/test_portable_setup.py
+/path/to/ml/python -m unittest discover -s tests -p 'test_*native.py'
 ```
 
-也可在 init 后用 `./experiment run --run-dir "$RUN"` 一次执行开发、冻结和全部最终评估。首次更建议分阶段执行。`final --tasks leaf-classification` 可先验证一个最终任务，再运行不带 `--tasks` 的 final 补齐全部任务。已完成任务不会重跑。
-
-## 实验定义与预算
-
-- Gemini 3.1 Pro Preview 同时生成解法和修改搜索策略，原生 Gemini 接口、HIGH thinking。密钥只由宿主进程读取，不进入候选容器。
-- 练习四题：leaf、spooky、denoising、taxi。每题两轮原生 online + offline；汇总四题公共验证历史，用 replay 平均值选择一个通用策略。
-- 最终 Lite22 固定策略，仅运行在线解法搜索，不再修改策略。最终私有成绩仅用于报告，不返回搜索或策略选择。
-- 同一题开发和最终评估合计 API 上限 $5、GPU 分配时间上限 2h；另设候选累计墙钟 2h 上限。开发阶段先分配 $2.5 / 40min，剩余留给最终阶段。22 题最多 $110 / 44 GPU h，失败尝试计费，不自动重置预算。
-- 每个候选最多 15min；四个任务并行，CPU 64–71 分为四组，每题2核；题内训练及模型请求串行。GPU 仅从 4–7 中租用空闲卡。避免占用另一组 MLEvolve 的 GPU 0–3。
-- 请求前按保守价格预留费用，按供应商账单结算。账单未知则阻止继续调用，绝不自动重发。金额预留可能导致提前停止；完整开发未结束时拒绝自动冻结，需检查日志后调整新实验设计。
-- init 冻结配置与代码哈希；修改代码后必须新建 run。新目录不意味着获准重新花费已消耗预算，请保留并核对旧账单。
-
-## 解释结果的边界
-
-这是基于霖睿 v26 的 MLE 迁移试验，保留累计搜索树、任意节点父节点选择、best-first、虚拟 replay；不是 Dream-RSI 论文逐项复现。首轮缩短轮数，未接入额外超参数和反事实调优。
-
-候选自报公共验证分数；目前检查指标名称、方向、样本标识、固定划分及输出文件，但尚未对所有 22 题统一独立重算公共指标。因此适合先跑通和观察，暂不作为严格可发表 baseline。最终使用官方 grader 评估已选 submission，搜索容器只看到 public 数据。汇报开发4题、其余18题、全部22题；18题已有其他 baseline 观察，不能称为从未接触的盲测。
-
-## 验证与产物
-
-真实 CPU 容器的 leaf 冒烟测试使用预写 sklearn 解法与模拟 LLM，验证训练、产物、online/offline、冻结和最终阶段调度；mock/smoke 模式绝不计入官方成绩。Gemini transport 使用模拟 HTTP 测试，尚未发起真实付费 Gemini 请求，GPU 训练及完整 22 题未验证。
-
-```bash
-/mnt/afs/yangsen1/envs/dream-rsi-mle/bin/python -m pytest tests -q
-```
-
-每个 run 保存 `frozen-config.json`、`budget.json`、`campaigns/`、`api/`、`outcomes/`、`policy-freeze.json`、`frozen-policy.py` 和 `summary.json`。`status` 的分组完成数指最终评估完成数，开发进度见后面的逐任务状态。页面用于观察，逐笔预算以 `budget.json` 为准。
-
-## 代理连接修复（2026-10-13）
-
-本机 TeamO 连接设置 `model.trust_env=false`，避免继承不可用的 SSH 会话 HTTP 代理；这是该服务的显式配置，不改变系统代理。preflight 现在会认证读取模型列表并确认模型存在，仍不会发起付费生成。开发过程逐题打印完成/停止原因；遇到未决请求立即停止后续任务。pilot-001 的两次 ProxyError 发生在 HTTPS 代理隧道建立阶段，训练尚未启动。恢复目录 pilot-002 保留旧记录的来源及核对说明，正式开发仍由用户启动。
-
-## 并行与截断修复
-
-霖睿 v25 配置的 discovery/developer 输出上限均为65,536；此前本接入分别只有16,384/8,192且启用HIGH thinking。pilot-002多次返回MAX_TOKENS，没有有效训练结果，费用仍计入预算。
-
-新配置保留Gemini HIGH thinking，两类请求输出上限均提高到65,536。按剩余美元预算计算实际允许上限；若预算不足以预留至少32,768输出tokens，明确停止，不发送明显过小的请求。每题请求串行结算，四题之间可并发。这个改动尚不能保证模型永不截断。
-
-并行分配：leaf CPU64–65，spooky CPU66–67，denoising CPU68–69，taxi CPU70–71。最终22题按固定任务顺序轮流映射到四个槽；一个槽同一时刻只跑一题。控制进程也限制到CPU64–71。GPU任务独占租用GPU4–7；MLEvolve预留GPU0–3和CPU0–63，不使用它暂时空闲的预留资源。每个训练容器内存上限32GB，四题最多128GB。不能将本次每题2核结果与原8核配置无说明混用。
-
-旧run冻结的源码不随修复覆盖；新run必须继承此前每题的已知费用，不能以换目录重置预算。pilot-003继承pilot-002账本，尚未启动付费生成。Taxi有两次取消且账单未知的请求，会保留预留款并阻止该题重新调用；其余三题可独立继续。四题完整开发不能在Taxi未解决时冻结。启动：
-
-```bash
-cd /mnt/afs/yangsen1/projects/mle-rsi-experiments
-RUN=/mnt/afs/yangsen1/runs/dream-rsi-mle-gemini-pilot-003
-set -o pipefail
-./experiment dev --run-dir "$RUN" 2>&1 | tee "$RUN/development.log"
-# 另开终端，先Ctrl-C关闭旧viewer，再运行：
-./experiment web --run-dir /mnt/afs/yangsen1/runs/dream-rsi-mle-gemini-pilot-003 --port 18766
-```
-
-重启viewer并刷新浏览器可看到新的分数说明。无有效候选时显示“暂无有效结果”，根节点明确标注未评估；不显示相对占位根节点的夸张提升百分比。
-
-## 未决账单与预算恢复修复
-
-未决API请求保留全额预留，但不再禁止该题发起新的、预算内的请求。原请求ID仍禁止自动重发。开发允许使用每题$5总额中的剩余部分；最终评估与开发继续共用该上限，不再额外锁死开发$2.5。
-
-`./experiment upgrade-budget --run-dir RUN` 是显式迁移命令：必须获得实验控制锁，备份原冻结配置与来源版本，保留账本原样。只将能证明未进入transport的本地LimitReached请求恢复为可发送，并归档对应的停止结果，保留已完成轮次与候选。它不调用付费模型。其他源码变化不会被这个迁移命令接受。
-
-pilot-003当前运行结束后，由已安排的本地修复进程自动执行以上迁移。修复进度见该run的 `budget-fix-apply.log` 和 `budget-fix-apply-status.json`。完成后在原主仓库执行 `./experiment dev --run-dir /mnt/afs/yangsen1/runs/dream-rsi-mle-gemini-pilot-003` 续跑；不要重新init或新建目录重置预算。
-
-## Spooky 单题 500 候选实验
-
-已准备独立冻结目录 `/mnt/afs/yangsen1/projects/mle-rsi-spooky-longrun`。启动、可视化、资源预算及 solver 转移协议见 [SPOOKY_EXPERIMENT.md](SPOOKY_EXPERIMENT.md)。使用 `scripts/start-spooky.sh`，不要用旧的全 22 题 run 命令。
-
-Spooky 并发版固定为 `spooky-solver-500-ready-v2`：同批 5 路 API、5 路候选训练，CPU0–39（每路8核），总内存上限160 GiB。运行目录为 `dream-rsi-spooky-solver-500-002`，旧 v1 tag 与 001 目录保留。
+来源、固定 commit 和历史开发说明分别见 [provenance](docs/provenance.md) 和 [历史记录](docs/experiment-history.md)。

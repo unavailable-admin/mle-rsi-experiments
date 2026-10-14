@@ -122,3 +122,16 @@ class Budget:
         with self.state() as s:
             s['execution'][key].update(state='completed', wall_seconds=wall,
                                       gpu_seconds=gpu_seconds, **extra)
+
+
+def load_spec(path):
+    """Resolve environment paths only when loading a new experiment config."""
+    def expand(value):
+        if isinstance(value,dict):return {k:expand(v) for k,v in value.items()}
+        if isinstance(value,list):return [expand(v) for v in value]
+        if isinstance(value,str):
+            result=os.path.expandvars(value)
+            if '${' in result:raise ValueError('Unresolved environment variable in config: '+value)
+            return result
+        return value
+    return expand(read(path))

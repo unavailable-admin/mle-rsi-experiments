@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import REPO
-from .common import lock, read, sha, write
+from .common import lock, read, sha, write, load_spec
 from .experiment import campaign, frozen, grade_selected, initialize
 from dream_rsi.storage import CampaignStore
 from dream_rsi.tree import DiscoveryTree
@@ -243,7 +243,7 @@ def main():
     p.add_argument('--port',type=int,default=18768)
     a=p.parse_args(); root=a.run_dir.resolve()
     if a.command=='init':
-        spec=read(a.config);validate(spec);initialize(root,spec,a.mode);save_report(root);return
+        spec=load_spec(a.config);validate(spec);initialize(root,spec,a.mode);save_report(root);return
     if a.command=='web':serve(root,a.port);return
     if a.command=='status':
         data=save_report(root);data.pop('nodes');print(json.dumps(data,indent=2));return

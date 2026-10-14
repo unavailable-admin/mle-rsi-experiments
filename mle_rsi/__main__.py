@@ -8,7 +8,7 @@ from pathlib import Path
 
 from . import REPO, WORKSPACE
 from .backend import task_ids
-from .common import lock, read, write
+from .common import lock, read, write, load_spec
 from .experiment import initialize, frozen, develop, freeze_policy, final_evaluate, summarize
 
 
@@ -31,7 +31,7 @@ def preflight(spec):
         checks['image']=client.images.get(execution['image']).id
     finally:client.close()
     checks['gpu_pool']=execution['gpu_pool']
-    checks['credentials_configured']=bool(os.environ.get(spec['model']['api_key_env'])) or Path(spec['model']['credential_file']).is_file()
+    checks['credentials_configured']=bool(os.environ.get(spec['model']['api_key_env'])) or bool(spec['model'].get('credential_file') and Path(spec['model']['credential_file']).is_file())
     # Authenticated read-only connectivity check; no generation or billing call.
     import httpx
     from .provider import load_key
@@ -60,11 +60,11 @@ def main():
     p.add_argument('--tasks',nargs='+',help='Optional final task subset; all22 report keeps unfinished tasks visible')
     p.add_argument('--port',type=int,default=8766)
     a=p.parse_args()
-    if a.command=='preflight':preflight(read(a.config));return
+    if a.command=='preflight':preflight(load_spec(a.config));return
     if a.run_dir is None:p.error('--run-dir required')
     root=a.run_dir.resolve()
     if a.command=='init':
-        initialize(root,read(a.config),a.mode);print(root);return
+        initialize(root,load_spec(a.config),a.mode);print(root);return
     if a.command=='web':
         from dream_rsi.web.__main__ import main as viewer
         viewer(['--runs-dir',str(root/'campaigns'),'--port',str(a.port)]);return

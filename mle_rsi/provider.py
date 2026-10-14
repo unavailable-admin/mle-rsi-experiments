@@ -16,6 +16,8 @@ from .common import Budget, LimitReached, read, write
 def load_key(spec):
     name=spec['model']['api_key_env']
     if not os.environ.get(name):
+        if not spec['model'].get('credential_file'):
+            raise RuntimeError('Set '+name+' or configure an explicit credential_file')
         # Operational credential loading; never put this file in prompts or run artifacts.
         content=Path(spec['model']['credential_file']).read_text()
         keys=re.findall(r'sk-[A-Za-z0-9_-]+',content)

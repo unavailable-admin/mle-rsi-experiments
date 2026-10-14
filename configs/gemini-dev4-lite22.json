@@ -5,7 +5,6 @@
     "name": "gemini-3.1-pro-preview",
     "base_url": "https://api.teamorouter.cn",
     "api_key_env": "RSI_GEMINI_API_KEY",
-    "credential_file": "/mnt/afs/yangsen1/teamo/credentials.txt",
     "reasoning_effort": "high",
     "discovery_output_tokens": 65536,
     "developer_output_tokens": 65536,
@@ -35,9 +34,9 @@
   },
   "execution": {
     "candidate_timeout_seconds": 900,
-    "python_environment": "/mnt/afs/yangsen1/envs/mle-gemini-four",
+    "python_environment": "${RSI_EVAL_WORKSPACE}/envs/mle-agent",
     "image": "sha256:859eb2ba86a41e3a360e9d726a183147a20faa990bfd5f7f3e4f4372b375f00f",
-    "pretrained_models": "/mnt/afs/yangsen1/runs/mlevolve-gemini-four-v3/models",
+    "pretrained_models": "${RSI_EVAL_WORKSPACE}/models",
     "cpu_ids": [
       64,
       65,
