@@ -37,7 +37,7 @@
 初始化包含公开验证数据准备，不发起付费请求。
 
 主仓库：`/mnt/afs/yangsen1/projects/mle-rsi-experiments`。
-Dream-RSI 是本仓库的 submodule，在霖睿 `3ccf88a209604795f75ec2e0f2f40352dc80b620` 上建立 `mle-task-adapter` 分支；rsi-eval 固定在 `991d855a8c1cc71ea11a7f1512db54a564e5fd13`。适配提交目前只在本地，尚未推送远端。
+Dream-RSI 是本仓库的 submodule，在霖睿 `3ccf88a209604795f75ec2e0f2f40352dc80b620` 上建立 `mle-task-adapter` 分支；rsi-eval 固定在 `991d855a8c1cc71ea11a7f1512db54a564e5fd13`。适配提交已发布到 Dream-RSI 远端的 `mle-spooky-solver-500` 分支；本项目实验版本发布到 `unavailable-admin/mle-rsi-experiments` 的 `spooky-solver-500` 分支，正式实验代码以 `spooky-solver-500-ready-v2` tag 为准。
 
 ## 启动
 

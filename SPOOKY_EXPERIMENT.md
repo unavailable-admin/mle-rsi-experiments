@@ -48,7 +48,7 @@ Dream-RSI 子模块的对应 tag 为 `mle-spooky-solver-500-runtime-v1`；实际
 commit 由主仓库 gitlink 固定。运行副本由此 tag 在本机重建，不是新的研发主仓库。
 后续开发仍在 `mle-rsi-experiments` 进行，不修改已初始化的运行副本。
 
-本次 tag 和提交仅保存在本机，未推送远端。运行目录的 `version-provenance.json`
+本次 tag 和提交已发布到 `git@github.com:unavailable-admin/mle-rsi-experiments.git` 的 `spooky-solver-500` 分支；子模块提交与 runtime tag 发布在 Dream-RSI 远端的 `mle-spooky-solver-500` 分支。远端原 main 历史保留。运行目录的 `version-provenance.json`
 记录主仓库和子模块 commit、源码哈希核对结果以及归档位置。
 
 v2 保留 v1 tag，不覆盖原版本。v1 未启动的运行目录 001 及旧源码副本归档保留；新并发运行目录为 002。Dream-RSI 子模块仍沿用已验证的 runtime-v1 提交，本次修改位于 MLE 适配层。
