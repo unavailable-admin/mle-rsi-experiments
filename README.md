@@ -61,3 +61,62 @@ main/v2 也能使用 guarded 配置：该配置不设置题内并发，因此保
 ```
 
 来源、固定 commit 和历史开发说明分别见 [provenance](docs/provenance.md) 和 [历史记录](docs/experiment-history.md)。
+
+### Spooky diversity trial and sequential queue
+
+The opt-in `configs/spooky-diversity-100.json` trial keeps the existing model,
+fixed public validation protocol and five eight-CPU lanes. It starts from a fresh
+root, runs 100 candidate slots (four rounds), and caps API accounting including
+pending reservations at USD6. It does not import earlier solvers or private grades.
+
+Python AST fingerprints reject exact/formatting/comment-only duplicates before
+training. One additional generation is allowed per slot; all calls are billed and
+recorded. A second rejected response consumes the slot without training. Literal
+and parameter changes are retained. This is not semantic equivalence checking:
+renaming and equivalent rewrites may still pass. Claims persist across batches
+and controller recovery, and concurrently generated duplicates cannot both claim
+the same fingerprint. A resumed claim from the same attempt is idempotent.
+
+Batch positions 0–2 request evidence-based improvement, position 3 requests a
+materially different approach, and position 4 requests hypothesis testing. Concrete
+error repair overrides the assigned role. These are explicit prompt roles, not
+proof that a candidate changes model family. Existing learned parent selection
+and offline policy evaluation remain intact. Method-family stagnation scheduling
+is deferred; this trial tests the smaller deduplication/role intervention first.
+`single-task status` includes a `diversity` audit with duplicate responses,
+skipped training, unique ASTs and role counts.
+
+Initialize a fresh run before starting its queue, then run:
+
+```bash
+./single-task init --config configs/spooky-diversity-100.json --run-dir NEW_ROOT
+python -m mle_rsi.queue_single --after PREDECESSOR_ROOT --run-dir NEW_ROOT
+```
+
+Use the configured Dream-RSI Python environment. The queue checks successful
+predecessor completion, the sealed candidate count and checkpoint hashes, and
+release of the predecessor controller lock. The new controller also takes the
+normal physical-CPU sibling leases. A predecessor failure blocks the queue;
+a launch receipt prevents duplicate launches or silent retries. Status lives in
+`queue-status.json`, and execution output in `controller.log`. Keep this checkout
+separate from the running predecessor: frozen source identity checks remain active.
+
+To continue a completed diversity run in a separate root, prepare a public-history
+extension, then explicitly start it:
+
+```bash
+python -m scripts.extend_spooky_public --source COMPLETED_ROOT --destination NEW_ROOT --target 200 --additional-api-cap 6
+./single-task run --run-dir NEW_ROOT
+```
+
+The extension preserves historical API charges and adds the requested allowance.
+It imports public search artifacts and policy history, excluding private grading
+results. The original run stays unchanged. Because the operator had already seen
+its private scores, this is an exploratory continuation, not an independent run.
+The preparer requires the source's frozen runtime; keep its checkout available.
+
+The October 15, 2026 run completed 200 candidates: private Log Loss **0.28661**
+(local MLE-bench bronze), versus 0.31410 at 100 and 0.28902 at 150. Total API
+charges were **$3.20759979**, including **$1.45031556** from the original 100.
+Selection used public validation; private grading ran after search completion.
+These are one-run observations, not a controlled estimate of the intervention.

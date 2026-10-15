@@ -140,7 +140,7 @@ def report(root):
     data = {'mode':record['mode'],'target_candidates':validate(spec),'target_rounds':spec['search']['development_rounds'],
             'state':read(root/'single-status.json') if (root/'single-status.json').exists() else {'state':'ready'},
             'parallelism':{'api':spec['model'].get('request_parallelism',1),'training':len(spec['execution'].get('candidate_cpu_groups',[])) or 1},
-            'completed_rounds':0,'nodes':[],'checkpoints':[],'updated_at':time.time()}
+            'api_cap_usd':spec['budget']['api_usd_total'],'completed_rounds':0,'nodes':[],'checkpoints':[],'updated_at':time.time()}
     if (store_path(root)/'campaign.sqlite').exists():
         store = CampaignStore(store_path(root),read_only=True)
         try:
@@ -159,6 +159,9 @@ def report(root):
                     'stage':n.attempt.stage.value,'source_hash':n.artifact.source_hash,
                     'submission_hash':n.evaluation.diagnostics.get('submission_sha256'),
                     'failure':n.evaluation.fail_class.value})
+            if spec.get('diversity_trial'):
+                from .diversity import audit
+                data['diversity'] = audit(store)
             data['policies'] = [dict(round=s['round'],selected_id=s['selected_id'],evaluated_versions=s['evaluated_versions'])
                                 for _,s in store.list('round_summary')]
         finally:
@@ -207,7 +210,7 @@ def render(data):
     rows=''.join('<tr>'+''.join('<td>'+html.escape(str(c.get(k,'—')))+'</td>' for k in ['candidates','public','private','medal','node_id'])+'</tr>' for c in data['checkpoints'])
     b=data.get('budget',{})
     stats=f"API {data.get('parallelism',{}).get('api',1)}-way / training {data.get('parallelism',{}).get('training',1)}-way · {len(data['nodes'])}/{data['target_candidates']} candidates · {data['completed_rounds']}/{data['target_rounds']} rounds · {data['valid_candidates']} valid · {data['unique_sources']} distinct code · {data['unique_submissions']} distinct submissions · {data['successful_debug']} successful debug"
-    return '''<!doctype html><html lang="zh"><meta charset="utf-8"><meta http-equiv="refresh" content="30"><title>Spooky solver search</title><style>body{font:16px system-ui;background:#f4f6fa;color:#192638;max-width:1100px;margin:40px auto;padding:20px}article{background:white;padding:24px;border-radius:12px;margin:20px 0}svg{width:100%}td,th{text-align:left;padding:12px;border-bottom:1px solid #ddd}table{width:100%}code{word-break:break-all}</style><h1>Spooky · 单题 solver 搜索</h1>'''+f'<p>{html.escape(str(data["state"]))} · mode={data["mode"]} · phase={data.get("phase","—")}</p><article>{stats}<p>API charged ${b.get("api_usd",0):.3f}; accounted incl. reservations ${b.get("api_accounted_usd",0):.3f} / $20 · candidate wall {b.get("candidate_wall_hours",0):.2f}h / 40h</p></article><article>'+''.join(svg)+'''<p style="color:#147d92">蓝绿：固定 public validation 历史最优；橙：搜索全部结束后测的 private checkpoint。</p><p>两种 split 的分数不可直接等同。奖牌线只适用于 private。最终 solver 始终按 public 选，不能按这张 private 曲线挑选。页面每 30 秒刷新。</p></article><article><table><tr><th>候选数</th><th>Public loss</th><th>Private loss</th><th>Medal</th><th>Solver node</th></tr>'''+rows+'</table></article></html>'
+    return '''<!doctype html><html lang="zh"><meta charset="utf-8"><meta http-equiv="refresh" content="30"><title>Spooky solver search</title><style>body{font:16px system-ui;background:#f4f6fa;color:#192638;max-width:1100px;margin:40px auto;padding:20px}article{background:white;padding:24px;border-radius:12px;margin:20px 0}svg{width:100%}td,th{text-align:left;padding:12px;border-bottom:1px solid #ddd}table{width:100%}code{word-break:break-all}</style><h1>Spooky · 单题 solver 搜索</h1>'''+f'<p>{html.escape(str(data["state"]))} · mode={data["mode"]} · phase={data.get("phase","—")}</p><article>{stats}<p>API charged ${b.get("api_usd",0):.3f}; accounted incl. reservations ${b.get("api_accounted_usd",0):.3f} / ${data.get("api_cap_usd",20):g} · candidate wall {b.get("candidate_wall_hours",0):.2f}h / 40h</p></article><article>'+''.join(svg)+'''<p style="color:#147d92">蓝绿：固定 public validation 历史最优；橙：搜索全部结束后测的 private checkpoint。</p><p>两种 split 的分数不可直接等同。奖牌线只适用于 private。最终 solver 始终按 public 选，不能按这张 private 曲线挑选。页面每 30 秒刷新。</p></article><article><table><tr><th>候选数</th><th>Public loss</th><th>Private loss</th><th>Medal</th><th>Solver node</th></tr>'''+rows+'</table></article></html>'
 
 
 def save_report(root):

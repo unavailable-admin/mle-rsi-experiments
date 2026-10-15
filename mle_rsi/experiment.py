@@ -120,7 +120,7 @@ def campaign(root, task, phase, *, initial_source=None):
           discovery_model=mc,developer_model=replace(mc,max_output_tokens=model['developer_output_tokens'],
               model=mc.model if mock_model else model.get('developer_name',model['name']),
               reasoning_effort=model.get('developer_reasoning_effort',model['reasoning_effort'])),
-          budget=BudgetConfig(max_discovery_calls=max(100,batches*s['workers']*(s['development_rounds'] if is_dev else 1)),
+          budget=BudgetConfig(max_discovery_calls=(2 if spec.get('diversity_trial') else 1)*max(100,batches*s['workers']*(s['development_rounds'] if is_dev else 1)),
                               max_developer_calls=max(30,s['development_rounds']*(s['policy_versions_per_round']-1)),
                               max_tokens=s.get('max_tokens',3000000)))
     backend=MLEBackend(task,root,spec,phase,mock=mode=='mock')
@@ -136,6 +136,12 @@ def campaign(root, task, phase, *, initial_source=None):
     c=Campaign(cfg,task_backend=backend,initial_policy_source_override=initial_source,
                discovery_responder=discovery_responder if mock_model else None,
                developer_responder=developer_responder if mock_model else None)
+    if spec.get('diversity_trial'):
+        from .diversity import NoveltyGate, DiversityPrompts
+        c.agent.novelty_gate = NoveltyGate(c.store)
+        c.agent.prompts = DiversityPrompts(c.agent.prompts)
+        c.agent.max_response_attempts = 2
+        c.store.put('metadata', 'diversity_trial', spec['diversity_trial'])
     if not mock_model:
         load_key(spec)
         transport_class=GPTTransport if model.get('transport')=='gpt-chat' else GeminiTransport
