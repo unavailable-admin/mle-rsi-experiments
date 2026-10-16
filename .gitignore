@@ -12,3 +12,7 @@ workspace/
 *.log
 *.bundle
 credentials*
+
+# Machine-local handoff evidence and deployment manifests
+handoff-evidence/
+shared-code-manifest.json

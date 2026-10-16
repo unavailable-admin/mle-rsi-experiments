@@ -1,0 +1,36 @@
+{
+  "dream-rsi": {
+    "base_commit": "72e8d105eaec6d07af7a5a78acd558475077ce2f",
+    "files": {
+      "my_rsi/src/dream_rsi/evidence.py": {
+        "before": "916d1a39385aaceb12519b9a119f56e0033530563feefe30ec809ef2e597b808",
+        "after": "25e54da8ddcccc21c36a5a6b316f91fbeb339b0c472565f85bb8dec5508509dc"
+      },
+      "my_rsi/src/dream_rsi/online.py": {
+        "before": "f26642dae9ba73f740f21e212bf0b3fff644dc334aae3fd6be7fbe42879ed65e",
+        "after": "18d1457fdfbd9dd99ca0b92f62e3826af6ede01ecd15ea4c3cb8aa198bffd166"
+      },
+      "my_rsi/src/dream_rsi/policy.py": {
+        "before": "04586049fb0bdd6de0a7c766e3ed23fc09e384800c2bcc9810e196eb38987101",
+        "after": "6066e5e5d13ca1bf697efa92ca88b249cae536d14eefd70da9fabba6ea33062f"
+      },
+      "my_rsi/src/dream_rsi/prompting.py": {
+        "before": "7d0d4ee420cb7f4e2743439db51c483fa296041f52fa58d3d7473d1e3464914e",
+        "after": "b0965d8e90935cae95d808c9744a2596d84c1e03f3e5163ce4c709783ad88730"
+      },
+      "my_rsi/src/dream_rsi/repair_guard.py": {
+        "before": "b0b390a21c7504f95e0248e32586f0bfa7260d9400507a04713548b9764044cf",
+        "after": "8d3dbde406975753f82ffee2885bae43a71589bc6ab80b367f5a86e106831b94"
+      }
+    }
+  },
+  "rsi-eval": {
+    "base_commit": "991d855a8c1cc71ea11a7f1512db54a564e5fd13",
+    "files": {
+      "src/bench_container.py": {
+        "before": "431ff112fb3052c8ee4e145fa15adbb2c30a7ba0fe39141a89fd355e1fbcfd29",
+        "after": "20d8891fdd2434d758b1ce0135f48f4f185965ecf74ea56343516d0aca3a633c"
+      }
+    }
+  }
+}

@@ -57,6 +57,12 @@ def frozen(root):
         raise RuntimeError('Sources changed after initialization; use a new run directory')
     for path,expected in value.get('asset_hashes',{}).items():
         if sha(Path(root)/path)!=expected:raise RuntimeError('Frozen validation/runtime asset changed: '+path)
+    if value['spec'].get('continuation_execution_fingerprint'):
+        migration = read(Path(root)/'migration.json')
+        if sha(Path(root)/'migration.json') != value.get('migration_sha256'):
+            raise RuntimeError('Migration evidence changed')
+        if value['spec']['continuation_execution_fingerprint'] != migration['parent_execution']:
+            raise RuntimeError('Invalid inherited protocol fingerprint')
     return value
 
 
@@ -82,9 +88,10 @@ async def task_lanes(spec,tasks,phase,run):
     return sorted(rows,key=lambda r:tasks.index(r['task']))
 
 
-def campaign(root, task, phase, *, initial_source=None):
+def campaign(root, task, phase, *, initial_source=None, resource_pool=None, api_gate=None):
     root=Path(root);record=frozen(root);spec=copy.deepcopy(record['spec']);mode=record['mode']
-    spec['execution']['cpu_ids']=task_cpu_ids(spec,task,phase)
+    spec['execution']['cpu_ids']=(spec['execution']['cpu_ids'] if resource_pool is not None
+                                  else task_cpu_ids(spec,task,phase))
     s=spec['search'];model=spec['model']
     is_dev=phase=='development'
     if initial_source is None and spec.get('first_batch_fixes'):
@@ -124,6 +131,7 @@ def campaign(root, task, phase, *, initial_source=None):
                               max_developer_calls=max(30,s['development_rounds']*(s['policy_versions_per_round']-1)),
                               max_tokens=s.get('max_tokens',3000000)))
     backend=MLEBackend(task,root,spec,phase,mock=mode=='mock')
+    backend.resource_pool = resource_pool
     def discovery_responder(messages,request_id):
         if mode=='smoke':
             code=(REPO/'examples/leaf_smoke.py').read_text()
@@ -146,6 +154,8 @@ def campaign(root, task, phase, *, initial_source=None):
         load_key(spec)
         transport_class=GPTTransport if model.get('transport')=='gpt-chat' else GeminiTransport
         transport=transport_class(root,spec,task,phase,cid)
+        if api_gate is not None:
+            transport.gate = api_gate
         c.agent.client.transport=transport
         c.developer.client.transport=transport
     return c
@@ -249,7 +259,7 @@ async def freeze_policy(root):
         for _,c in cases:c.store.close()
 
 
-def grade_selected(root,task,result, *, output_dir=None):
+def grade_selected(root,task,result, *, output_dir=None, cpu_ids=None):
     root=Path(root);record=frozen(root);out=Path(output_dir) if output_dir is not None else root/'outcomes/final'/task
     report=out/'official-result.json'
     if report.exists():return read(report)
@@ -270,7 +280,7 @@ def grade_selected(root,task,result, *, output_dir=None):
         r=measure([str(WORKSPACE/'envs/mlebench/bin/python'),str(REPO/'third_party/rsi-eval/src/mle_grade.py'),
                    'grade','--submission',str(entries),'--output-dir',str(grading),
                    '--data-dir',str(WORKSPACE/'data/mlebench')],WORKSPACE,__import__('os').environ.copy(),
-                   out/'grading-resources',timeout=1800,cpu_ids=task_cpu_ids(record['spec'],task,'final'))
+                   out/'grading-resources',timeout=1800,cpu_ids=cpu_ids if cpu_ids is not None else task_cpu_ids(record['spec'],task,'final'))
         files=list(grading.glob('*_grading_report.json'))
         if r['exit_code'] or not files:
             value={'task':task,'state':'grading_failed','valid_submission':False,'any_medal':False}

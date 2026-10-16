@@ -1,0 +1,4 @@
+# Unified patches contain blank context lines whose single space is significant.
+patches/runtime/*.patch whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab
+# Preserve the already-verified 5090 probe source byte for byte.
+examples/fixes_environment_probe.py whitespace=-blank-at-eof

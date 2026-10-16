@@ -1,0 +1,166 @@
+diff --git a/my_rsi/src/dream_rsi/evidence.py b/my_rsi/src/dream_rsi/evidence.py
+index 61f7777..9b97bb7 100644
+--- a/my_rsi/src/dream_rsi/evidence.py
++++ b/my_rsi/src/dream_rsi/evidence.py
+@@ -55,6 +55,11 @@ def evaluation_summary(report, error_chars=2000, case_limit=3):
+     metrics = report.get("metrics") or diagnostics.get("metrics", {})
+     result["metrics"] = {name: _metric(value, error_chars)
+                          for name, value in metrics.items()}
++    duplicates=diagnostics.get("prediction_duplicate_of", {})
++    if duplicates:
++        result["prediction_duplicate_of"] = {kind:str(duplicates[kind])[:160]
++            for kind in ("validation", "submission") if kind in duplicates}
++        result["prediction_duplicate_note"] = "Exact normalized predictions; valid observation, not code equivalence."
+     gaps = report.get("objective_gaps", {})
+     gap_cases = []
+     for case_id, values in gaps.items():
+diff --git a/my_rsi/src/dream_rsi/online.py b/my_rsi/src/dream_rsi/online.py
+index 8ff8eef..9be3dc2 100644
+--- a/my_rsi/src/dream_rsi/online.py
++++ b/my_rsi/src/dream_rsi/online.py
+@@ -111,6 +111,10 @@ class OnlineScheduler:
+                 remaining = None if self.round_calls is None else self.round_calls-used
+                 if remaining is not None and remaining <= 0:
+                     return tree,{"stop_reason":"discovery_budget","rounds":len(tree.rounds)}
++                # Optional host admission hook. It runs only between durable batches;
++                # never interrupt or partially commit a batch for a scheduler pause.
++                if getattr(self, 'before_batch', None) is not None:
++                    await self.before_batch()
+                 index = len(tree.rounds)
+                 view,mapping = current_view(tree.nodes,index,feedback,node_budget(count))
+                 decision = self._forced(forced,view,mapping,node_budget(count)) if index == 0 and forced else None
+@@ -151,6 +155,8 @@ class OnlineScheduler:
+                 tree.rounds.append(step)
+                 count += len(created)
+                 self.store.commit_round(f"{tree.tree_id}:{index}",created,tree.to_payload())
++                if getattr(self, 'after_batch', None) is not None:
++                    await self.after_batch()
+                 emit("Online 扩展", done=index+1, total=limits, detail=f"已提交 {len(tree.nodes)-1} 个节点", finished=True)
+                 feedback.append({"parent_ids":list(step.parent_ids),"revealed_ids":list(step.revealed_ids),
+                                  "missing_parent_ids":list(step.missing_parent_ids)})
+diff --git a/my_rsi/src/dream_rsi/policy.py b/my_rsi/src/dream_rsi/policy.py
+index 0975939..ff06d9b 100644
+--- a/my_rsi/src/dream_rsi/policy.py
++++ b/my_rsi/src/dream_rsi/policy.py
+@@ -196,7 +196,7 @@ def workspace_policy_source():
+ '''
+ 
+ 
+-def best_first_policy_source(tunable=False, max_width=5, width=1):
++def best_first_policy_source(tunable=False, max_width=5, width=1, exploration_slots=0):
+     """Any-node best-first refinement: the policy chooses anchors and batch width.
+ 
+     tunable=True also declares PARAM_SPACE so the host can tune the knobs;
+@@ -208,6 +208,7 @@ def best_first_policy_source(tunable=False, max_width=5, width=1):
+     # Tunable by policy revision: parallel children per batch, distinct start
+     # points, and non-improving children tolerated before an anchor is set aside.
+     width = ''' + str(width) + '''
++    exploration_slots = ''' + str(exploration_slots) + '''
+     anchors = 1
+     patience = 2
+     default_beta = 0.6
+@@ -234,7 +235,7 @@ def best_first_policy_source(tunable=False, max_width=5, width=1):
+             if parent is not None and not (self._usable(node) and node["score"] > parent["score"]):
+                 stale[parent["node_id"]] = stale.get(parent["node_id"], 0) + 1
+         def rank(node_id):
+-            return (nodes[node_id]["score"] + jitter.get(node_id, 0) * max(abs(nodes[node_id]["score"]), 1e-12), node_id)
++            return (nodes[node_id]["score"], jitter.get(node_id, 0), node_id)
+         usable = [p for p in legal if p in nodes and self._usable(nodes[p])]
+         fresh = sorted((p for p in usable if stale.get(p, 0) < self.patience), key=rank, reverse=True)
+         if fresh:
+@@ -246,5 +247,12 @@ def best_first_policy_source(tunable=False, max_width=5, width=1):
+         else:
+             return {"parent_ids": [], "next_state": {}, "reason": "No legal parent"}
+         parents = [chosen[i % len(chosen)] for i in range(slots)]
++        # Explicit alternate anchors preserve exploration without perturbing scores.
++        alternatives = [p for p in sorted(usable, key=rank, reverse=True)
++                        if p not in chosen and nodes[p]["parent_id"] is not None]
++        reserve = min(self.exploration_slots, max(0, slots - 2), len(alternatives))
++        if reserve:
++            parents[-reserve:] = alternatives[:reserve]
++            reason += "; explicit alternate-anchor exploration"
+         return {"parent_ids": parents, "next_state": {}, "reason": reason}
+ '''
+diff --git a/my_rsi/src/dream_rsi/prompting.py b/my_rsi/src/dream_rsi/prompting.py
+index 77b9461..1c51e70 100644
+--- a/my_rsi/src/dream_rsi/prompting.py
++++ b/my_rsi/src/dream_rsi/prompting.py
+@@ -442,8 +442,9 @@ the selected policy's baked-in default_beta throughout a round. This scheduling
+ beta is separate from fixed evaluator beta1/beta2. Route target width, patience,
+ repair reserve and pruning through one _schedule(beta, width) method. High beta
+ means wider batches, greater patience and weaker pruning; low beta is selective.
+-Use view['priority_jitter'] for small seeded relative-priority perturbations. They
+-depend only on public IDs, the round and the episode seed, never hidden results.
++Use view['priority_jitter'] only to break equal-score ties, never to reverse unequal
++scores in best-first slots. Reserve explicit alternate-anchor exploration slots
++when useful for long searches. Seeds depend only on public IDs and the round.
+ No unseeded randomness: next_state and the host seed must reproduce every choice.
+ remaining_rounds is a batch horizon, never a limit on the number of parallel nodes.""")
+         text = text.replace("Never\n   sample randomly", "Use only host-provided seeded priority jitter; never sample unseeded randomness")
+diff --git a/my_rsi/src/dream_rsi/repair_guard.py b/my_rsi/src/dream_rsi/repair_guard.py
+index 86aaeb6..09fe9a4 100644
+--- a/my_rsi/src/dream_rsi/repair_guard.py
++++ b/my_rsi/src/dream_rsi/repair_guard.py
+@@ -1,9 +1,30 @@
+-"""Host-enforced, one-slot repairs shared by online and replay policy workers."""
++"""Host-enforced, state-dependent bounded repairs shared by online and replay policy workers."""
+ from dataclasses import replace
+ 
+ from .tree import BatchValidator
+ 
+ 
++def repair_parent_ids(nodes, eligible, slots):
++    """One child per failed node, no failed-debug chains; ordinary slot budget."""
++    used = {n['parent_id'] for n in nodes if n['parent_id'] is not None}
++    failures = [n for n in nodes if n['node_id'] in eligible
++                and n['parent_id'] is not None and not n['valid']
++                and n.get('stage') != 'debug' and n['node_id'] not in used
++                and n['fail_class'] in ('runtime_error', 'timeout', 'source_error', 'output_contract_error')]
++    successes = any(n['valid'] and n['fail_class'] == 'ok' and n['parent_id'] is not None for n in nodes)
++    limit = min(slots, 1 if successes or slots < 3 else min(3, (slots + 1) // 2))
++    # Stable across dictionary ordering; newest first within each error category.
++    failures.sort(key=lambda n: (n.get('created_order', 0), n['node_id']), reverse=True)
++    chosen = []
++    categories = set()
++    for n in failures:
++        if n['fail_class'] not in categories:
++            chosen.append(n['node_id'])
++            categories.add(n['fail_class'])
++    chosen += [n['node_id'] for n in failures if n['node_id'] not in chosen]
++    return chosen[:limit]
++
++
+ def bounded_repair_decision(decision, view):
+     slots=view.max_parallelism
+     if view.remaining_nodes is not None:slots=min(slots,view.remaining_nodes)
+@@ -14,26 +35,21 @@ def bounded_repair_decision(decision, view):
+     decision=BatchValidator.fill(decision,bounded_view,enabled=True)
+     nodes={node['node_id']:node for node in view.revealed_nodes}
+     legal=set(view.eligible_parent_ids)
+-    used={node['parent_id'] for node in nodes.values() if node['parent_id'] is not None}
+-    failures=[node for node in nodes.values() if node['node_id'] in legal
+-        and node['parent_id'] is not None and not node['valid'] and node.get('stage')!='debug'
+-        and node['node_id'] not in used
+-        and node['fail_class'] in ('runtime_error','timeout','source_error','output_contract_error')]
+-    repair=failures[-1]['node_id'] if failures else None
++    repairs=repair_parent_ids(list(nodes.values()), legal, slots)
+     usable=[node['node_id'] for node in nodes.values() if node['node_id'] in legal
+         and node['valid'] and node['fail_class']=='ok']
+     usable.sort(key=lambda key:(nodes[key]['score'],key),reverse=True)
+     original=list(decision.parent_ids)
+     parents=[]
+     for i,parent in enumerate(original):
+-        if i==0 and repair is not None:
+-            parents.append(repair)
++        if i<len(repairs):
++            parents.append(repairs[i])
+             continue
+         candidates=([parent] if parent in usable else [])+usable
+         chosen=next((p for p in candidates if view.parent_repeats_allowed or p not in parents),None)
+         if chosen is not None:parents.append(chosen)
+     if parents==original:return replace(decision,host_guarded=True)
+-    reason=decision.reason+' | Host bounded repair: '+(repair or 'exclude exhausted or debug failures')
++    reason=decision.reason+' | Host bounded repair: '+(','.join(repairs) or 'exclude exhausted or debug failures')
+     result=replace(decision,parent_ids=tuple(parents),reason=reason,host_guarded=True)
+     BatchValidator.validate(result,bounded_view)
+     return result

@@ -25,10 +25,16 @@ def main():
     gpu_task = task in execution['gpu_tasks']
     lease, gpu = None, None
     try:
-        if gpu_task:
+        if gpu_task and execution.get('global_pool'):
+            gpu = execution['leased_gpu']
+            fd = execution['gpu_lease_fd']
+            expected = (WORKSPACE/f'runs/gpu-leases/{__import__("socket").gethostname()}/gpu-{gpu}.lock').resolve()
+            if gpu not in execution['gpu_pool'] or Path(os.readlink(f'/proc/self/fd/{fd}')).resolve() != expected:
+                raise RuntimeError('Invalid inherited GPU lease')
+        elif gpu_task:
             for device in execution['gpu_pool']:
-                path = WORKSPACE/f'runs/gpu-leases/gpu-{device}.lock'
-                path.parent.mkdir(exist_ok=True)
+                path = WORKSPACE/f'runs/gpu-leases/{__import__("socket").gethostname()}/gpu-{device}.lock'
+                path.parent.mkdir(parents=True, exist_ok=True)
                 handle = path.open('a+')
                 try: fcntl.flock(handle, fcntl.LOCK_EX|fcntl.LOCK_NB)
                 except BlockingIOError:
@@ -41,13 +47,19 @@ def main():
             if lease is None: raise LimitReached('No free configured GPU; preserving other experiments')
         budget = Budget(root,spec['budget'])
         key=str(directory.relative_to(root))
-        parallel = bool(execution.get('candidate_cpu_groups'))
+        parallel = bool(execution.get('candidate_cpu_groups') or execution.get('global_pool'))
         if parallel:
             timeout = budget.reserve_execution(key,task,phase,execution['candidate_timeout_seconds'],gpu is not None)
         else:
             allowance = budget.execution_allowance(task,phase,gpu is not None)
             timeout=min(execution['candidate_timeout_seconds'],allowance-5)
         work=directory/'output';work.mkdir()
+        # This host's FUSE AFS mount cannot use id-mapped writable bind mounts.
+        # Only the newly created candidate output belongs to the mapped root;
+        # data, code, environments and all other run paths retain their owners.
+        if execution.get('container_output_uid') is not None:
+            os.chown(work, execution['container_output_uid'], execution['container_output_gid'])
+
         task_data=read(directory/'task.json')
         task_data['budget'].update(wall_seconds=timeout,gpu_count=int(gpu is not None))
         write(directory/'task.json',task_data)
@@ -56,7 +68,7 @@ def main():
         prepared=root/'prepared'/task
         validation=read(prepared/'manifest.json') if spec.get('first_batch_fixes') else None
         if validation and validation.get('sanitized_public'):public=prepared/validation['sanitized_public']
-        pairs=[(environment,environment,True), (WORKSPACE/'envs/mle-lite-agent',WORKSPACE/'envs/mle-lite-agent',True),
+        pairs=[(environment,environment,True),
                (WORKSPACE/'tools/python',WORKSPACE/'tools/python',True),
                (public,Path('/data'),True),
                (directory/'agent.py',Path('/agent.py'),True),(directory/'task.json',Path('/task.json'),True),
@@ -67,7 +79,7 @@ def main():
             if validation['split_file']:pairs.append((prepared/'split.csv',Path('/validation/split.csv'),True))
             for target,source in validation.get('data_overrides',{}).items():
                 pairs.append((prepared/source,Path('/data')/target,True))
-        for source,target in [(execution.get('pretrained_models'),'/models/pretrained'),(str(WORKSPACE/'cache/torch'),'/models/torch')]:
+        for source,target in [(execution.get('pretrained_models'),'/models/pretrained'),(execution.get('torch_cache',str(WORKSPACE/'cache/torch')),'/models/torch')]:
             if source and Path(source).exists():pairs.append((Path(source).resolve(),Path(target),True))
         mounts=[{'Source':str(s),'Target':str(t),'Type':'bind','ReadOnly':ro} for s,t,ro in pairs]
         env={'CONDA_PREFIX':str(environment),'OMP_NUM_THREADS':str(len(cpu)),'OPENBLAS_NUM_THREADS':str(len(cpu)),

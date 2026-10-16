@@ -1,5 +1,6 @@
 """Controller-side preparation, before any paid generation."""
 import os
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -15,7 +16,7 @@ def prepare_assets(root, spec, tasks):
     prefix=['taskset','-c',','.join(map(str,cpus)),python]
     env={**os.environ,'OMP_NUM_THREADS':str(len(cpus)),'OPENBLAS_NUM_THREADS':str(len(cpus)),'MKL_NUM_THREADS':str(len(cpus))}
     shutil.copyfile(REPO/'mle_rsi/candidate_runtime.py',runtime/'mle_runtime.py')
-    subprocess.run(prefix+[str(REPO/'mle_rsi/runtime_inventory.py'),str(WORKSPACE),str(runtime/'inventory.json')],env=env,check=True,timeout=120)
+    subprocess.run(prefix+[str(REPO/'mle_rsi/runtime_inventory.py'),str(WORKSPACE),str(runtime/'inventory.json'),json.dumps(spec['execution'])],env=env,check=True,timeout=120)
     for task in tasks:
         print('PREPARE PUBLIC VALIDATION',task,flush=True)
         subprocess.run(prefix+[str(REPO/'mle_rsi/validation.py'),'prepare',task,

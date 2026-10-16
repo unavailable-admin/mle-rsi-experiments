@@ -127,6 +127,12 @@ all test IDs. The host checks its columns, IDs, row count and prediction domain
 before accepting a candidate; public validation alone is insufficient. For birds,
 the official sample has Id,Probability (one row per recording/species pair), not
 rec_id,species,probability. Inspect the sample to construct its IDs correctly.
+For Birds, an empty known label list means a valid all-zero species row. Keep it.
+Only '?' denotes unknown labels. Never discard recordings because their label
+list is empty. Parse variable-length label CSV rows with csv.reader, not a
+fixed-width pandas parser. Preserve every fixed validation ID and column order.
+For probability metrics, inspect public accuracy, log loss and confidence
+together. Fit any calibration only on an inner split of outer training data.
 
 Use only features available at prediction time. Removed post-outcome fields are
 not accessible in sanitized public inputs. Do not recover them from IDs or targets.
@@ -141,7 +147,7 @@ Use rt.progress(stage, **details), for example rt.progress("fit", rows=len(train
 around expensive work. Only stage is positional; all details are keyword arguments.
 Use rt.remaining_seconds(reserve=45) to reserve time for full test prediction and writing outputs. Validate shapes on a
 small batch before full training. Syntax, imports, labels and budget errors should
-be corrected before costly fitting. For torch 2.2 use torch.cuda.amp.GradScaler.
+be corrected before costly fitting. Use AMP APIs supported by the recorded PyTorch version.
 The helper source is at /runtime/mle_runtime.py. Do not modify the helper or split.
 '''
 
@@ -191,7 +197,7 @@ class MLEBackend:
         return {'benchmark':'mle', 'task':self.task_id, 'metric':self.metric, 'phase':self.phase,
                 'description_sha256':sha(self.public/'description.md'), 'contract':digest(V2_CONTRACT if self.fixed else CONTRACT),
                 'validation_manifest':sha(self.prepared/'manifest.json') if self.fixed else None,
-                'execution':self.spec['execution'], 'mock':self.mock}
+                'execution':self.spec.get('continuation_execution_fingerprint', self.spec['execution']), 'mock':self.mock}
 
     def bind(self, store, protocol_hash):
         self.store, self.protocol_hash = store, protocol_hash
@@ -212,6 +218,15 @@ class MLEBackend:
                                              'score_definition':self.metric['definition']})
 
     async def evaluate(self, artifact, batch):
+        if getattr(self, 'resource_pool', None) is not None:
+            async with self.resource_pool.slot(self.task_id, self.task_id in self.spec['execution']['gpu_tasks']) as slot:
+                worker = copy.copy(self)
+                worker.spec = copy.deepcopy(self.spec)
+                worker.spec['execution']['cpu_ids'] = list(slot['cpus'])
+                worker.spec['execution']['global_pool'] = True
+                worker.spec['execution']['leased_gpu'] = slot['gpu']
+                worker.spec['execution']['gpu_lease_fd'] = slot['fd']
+                return await worker._evaluate(artifact, batch)
         if self.cpu_slots is None:
             async with self.gate:
                 return await self._evaluate(artifact,batch)
@@ -264,7 +279,9 @@ class MLEBackend:
                                            directory=str(directory), spec=self.spec))
         # Worker owns its container; process completion includes forced container cleanup.
         process = await asyncio.create_subprocess_exec(sys.executable, '-m', 'mle_rsi.execute',
-                    str(directory/'request.json'), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+                    str(directory/'request.json'), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+                    pass_fds=(() if self.spec['execution'].get('gpu_lease_fd') is None else
+                              (self.spec['execution']['gpu_lease_fd'],)))
         try:
             output, _ = await process.communicate()
         except asyncio.CancelledError:
@@ -301,7 +318,7 @@ class MLEBackend:
                     str(Path(self.spec['execution']['python_environment'])/'bin/python'),str(REPO/'mle_rsi/validation.py'),
                     'score',str(self.prepared),str(out),str(result),'--public',str(self.public)]
                 scorer=await asyncio.create_subprocess_exec(*command,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT,
-                    env={**os.environ,'OMP_NUM_THREADS':'8','OPENBLAS_NUM_THREADS':'8','MKL_NUM_THREADS':'8'})
+                    env={**os.environ,**{k:str(len(self.spec['execution']['cpu_ids'])) for k in ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS')}})
                 try:
                     scorer_output,_=await asyncio.wait_for(scorer.communicate(),timeout=300)
                 except BaseException:
@@ -315,6 +332,12 @@ class MLEBackend:
                 metric={'validation_metric':self.metric['name'],'higher_is_better':self.metric['higher_is_better'],
                     'validation_score':independent['validation_score'],'n_train':independent['n_train'],
                     'n_validation':independent['n_validation'],'score_source':'host-recomputed'}
+                metric.update(independent.get('probability_diagnostics',{}))
+                from .diversity import record_prediction_fingerprints
+                matches=record_prediction_fingerprints(self.store,attempt,independent.get('prediction_fingerprints',{}))
+                diagnostics['prediction_duplicate_of']=matches
+                for kind, previous in matches.items():
+                    metric[kind+'_predictions_duplicate_of']=previous
                 score=quality(metric['validation_score'],self.metric)
                 diagnostics.update(split_hash=independent['manifest_sha256'],submission_sha256=sha(out/'submission.csv'))
                 audit=out/'runtime-audit.json'

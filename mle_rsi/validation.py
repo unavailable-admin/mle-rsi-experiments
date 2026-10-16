@@ -253,6 +253,21 @@ def validate_submission(public, output, meta):
             'id_column':id_column,'prediction_columns':predictions,'private_labels_used':False}
 
 
+def prediction_fingerprint(frame, id_column, columns, numeric=True):
+    """Exact predictions after canonical ID/column ordering; not model equivalence."""
+    import numpy as np
+    columns=sorted(columns)
+    frame=frame.set_index(id_column).sort_index()
+    h=hashlib.sha256(json.dumps([list(frame.index),columns],ensure_ascii=False).encode())
+    if numeric:
+        values=frame[columns].to_numpy(dtype='<f8',copy=True)
+        values[values==0]=0  # signed zero denotes the same prediction
+        h.update(values.tobytes())
+    else:
+        h.update(json.dumps(frame[columns].values.tolist(),ensure_ascii=False).encode())
+    return h.hexdigest()
+
+
 def score(directory, output, public=None):
     import numpy as np
     import pandas as pd
@@ -269,7 +284,12 @@ def score(directory, output, public=None):
     kind = 'literal' if meta['metric']=='rmse_pixels' else meta['id_kind']
     pred['id'] = pred['id'].map(lambda x:canonical_id(x,kind))
     if pred['id'].duplicated().any() or len(pred)!=len(truth) or set(pred['id'])!=set(truth['id']):
-        raise ValueError('Validation prediction IDs differ from the host-owned fixed split')
+        missing=sorted(set(truth['id'])-set(pred['id']))
+        extra=sorted(set(pred['id'])-set(truth['id']))
+        duplicates=sorted(set(pred.loc[pred['id'].duplicated(),'id']))
+        raise ValueError('Validation prediction IDs differ from the host-owned fixed split: '
+                         f'expected={len(truth)}, actual={len(pred)}, missing={missing[:8]}, '
+                         f'extra={extra[:8]}, duplicates={duplicates[:8]}')
     pred = pred.set_index('id').loc[truth['id']]
     metric = meta['metric'];y = truth[meta['targets']].to_numpy()
     if metric=='text_accuracy':
@@ -301,7 +321,22 @@ def score(directory, output, public=None):
             value = float(np.sqrt(np.mean((np.log1p(y.astype(float))-np.log1p(p))**2,axis=0)).mean())
         else:raise ValueError('Unknown independent metric '+metric)
     if not np.isfinite(value):raise ValueError('Independent score is non-finite')
+    diagnostics={}
+    if metric in ('multiclass','logloss'):
+        probs=p if metric=='multiclass' else np.column_stack([1-p[:,0],p[:,0]])
+        labels=np.asarray(columns if metric=='multiclass' else ['0','1'])
+        actual=y[:,0].astype(str)
+        label_index={str(label):i for i,label in enumerate(labels)}
+        diagnostics={'public_accuracy':float(np.mean(labels[probs.argmax(axis=1)]==actual)),
+                     'public_log_loss':float(value),
+                     'public_mean_confidence':float(probs.max(axis=1).mean()),
+                     'public_mean_true_class_probability':float(np.mean([probs[i,label_index[v]] for i,v in enumerate(actual)]))}
+    fingerprints={'validation':prediction_fingerprint(pred.reset_index(),'id',columns,metric!='text_accuracy')}
+    if submission_check:
+        submission=pd.read_csv(output/'submission.csv',dtype=str,keep_default_na=False)
+        fingerprints['submission']=prediction_fingerprint(submission,submission_check['id_column'],submission_check['prediction_columns'],metric!='text_accuracy')
     return {'validation_score':float(value),'independently_scored':True,'scored_predictions':len(truth),
+            'probability_diagnostics':diagnostics,'prediction_fingerprints':fingerprints,
             'n_validation':meta['n_validation'],'n_train':meta['n_train'],
             'manifest_sha256':file_hash(directory/'manifest.json'),'metric':metric,'submission_contract':submission_check}
 

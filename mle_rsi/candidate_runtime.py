@@ -89,6 +89,17 @@ def write_validation(ids, predictions, reported_score=None, model=None):
     values=np.asarray(predictions)
     if values.ndim==1:values=values[:,None]
     if values.shape != (len(ids),len(meta['prediction_columns'])):raise ValueError('Wrong prediction shape for fixed metric')
+    if meta.get('split_file') and meta['metric'] not in ('rmse_pixels', 'text_accuracy'):
+        from collections import Counter
+        split=split_table()
+        expected=set(split.loc[split['split']=='validation','id'])
+        counts=Counter(ids)
+        missing=sorted(expected-set(ids));extra=sorted(set(ids)-expected)
+        duplicates=sorted(k for k,v in counts.items() if v>1)
+        if missing or extra or duplicates:
+            raise ValueError('Validation prediction IDs differ: expected='+str(len(expected))+
+                ', actual='+str(len(ids))+', missing='+str(missing[:8])+
+                ', extra='+str(extra[:8])+', duplicates='+str(duplicates[:8]))
     frame=pd.DataFrame(values,columns=meta['prediction_columns']);frame.insert(0,'id',ids)
     frame.to_csv(out/'validation_predictions.csv',index=False)
     # For pixel tasks the split is image-level; the scorer verifies every pixel.

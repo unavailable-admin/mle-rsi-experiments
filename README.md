@@ -1,5 +1,9 @@
 # Dream-RSI × MLE-bench
 
+混合调度、获牌退出、跨机器安装和手动切换入口见 [新调度说明](docs/mixed-scheduling-medal-retirement.md)。
+
+总目标：在 MLE-bench 上超过 HMA、达到 SOTA；短期目标：Lite22 SOTA。当前准备的新入口是[半机 Lite22 连续逐轮实验](docs/lite22-rounds.md)，带网页暂停/继续、跨题共享资源和每轮成绩。
+
 主仓库的 `main` 是统一开发入口，包含 guarded Lite22 和 Spooky 单题累计搜索。历史实验由 tag 固定；不要用 main 的新代码覆盖正在运行的冻结副本。
 
 | 版本 | 用途 |

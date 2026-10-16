@@ -14,6 +14,19 @@ def source_fingerprint(source):
     return hashlib.sha256(normalized.encode()).hexdigest()
 
 
+def record_prediction_fingerprints(store, attempt_id, fingerprints):
+    """Durable post-execution observation, never rejection or a hidden retry."""
+    matches={}
+    for kind, fingerprint in fingerprints.items():
+        key=kind+':'+fingerprint
+        previous=store.get('prediction_fingerprint',key)
+        if previous is None:
+            store.put('prediction_fingerprint',key,{'attempt_id':attempt_id})
+        elif previous['attempt_id'] != attempt_id:
+            matches[kind]=previous['attempt_id']
+    return matches
+
+
 class NoveltyGate:
     def __init__(self, store):
         self.store = store

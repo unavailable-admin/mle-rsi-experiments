@@ -1,0 +1,20 @@
+diff --git a/src/bench_container.py b/src/bench_container.py
+index e3dbed8..08c6e2f 100644
+--- a/src/bench_container.py
++++ b/src/bench_container.py
+@@ -1,5 +1,6 @@
+ """Isolated candidate execution and cgroup resource sampling for benchmark adapters."""
+ import json
++import os
+ from pathlib import Path
+ import subprocess
+ import time
+@@ -11,7 +12,7 @@ def measure_container(command,cwd,env,output,mounts,timeout=14400,cpu_ids=None,g
+     output=Path(output);output.mkdir(parents=True,exist_ok=True)
+     cfg={'runtime':'sysbox-runc','nano_cpus':8_000_000_000,'shm_size':'4G','mounts':[]}
+     if gpu is not None:
+-        cfg=json.loads((ROOT/f'runs/configs/sysbox-gpu{gpu}.json').read_text())
++        cfg=json.loads((Path(os.environ.get('MLE_GPU_CONFIG_DIR', str(ROOT/'runs/configs')))/f'sysbox-gpu{gpu}.json').read_text())
+         cfg['nano_cpus']=8_000_000_000
+     cfg['mounts']+=mounts
+     cfg['shm_size']=env.get('BENCH_SHM_SIZE',cfg.get('shm_size','4G'))
