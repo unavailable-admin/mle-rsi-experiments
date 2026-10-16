@@ -58,6 +58,12 @@ def inspect_boundary(source, boundary=4):
             result = read(folder/'official-result.json')
             allowed = ('graded','no_submission') if record['mode']=='real' else ('verification_only',)
             if result['state'] not in allowed: raise ValueError('Incomplete grading: '+task)
+    if record['mode']=='real':
+        for task in tasks:
+            prepared=source/'prepared'/task
+            for rel, expected in read(prepared/'manifest.json')['file_hashes'].items():
+                if sha(prepared/rel)!=expected:
+                    raise ValueError('Prepared validation data changed: '+task+'/'+rel)
     for rel, expected in record.get('asset_hashes',{}).items():
         if sha(source/rel) != expected: raise ValueError('Parent asset changed: '+rel)
     return record, tasks
@@ -231,6 +237,8 @@ def start(source,root,config):
             raise ValueError('Prepared deployment changed')
         frozen(root)
         if read(root/'offline-max-lineage.json')['parent']!=str(source.resolve()): raise ValueError('Source differs from prepared lineage')
+        from .__main__ import preflight as check_provider_and_runtime
+        check_provider_and_runtime(frozen(root)['spec'])  # authenticated GET only, no generation
         launch(root)
 
 

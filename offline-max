@@ -11,4 +11,9 @@ if [[ -z "$runner" ]]; then
     runner=python3
   fi
 fi
-exec "$runner" -m mle_rsi.offline_max "$@"
+# Pin before Python imports can create BLAS threads; export runs on the source host.
+if [[ "${1:-}" == "export" ]]; then
+  exec "$runner" -m mle_rsi.offline_max "$@"
+fi
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+exec taskset -c 0-31 "$runner" -m mle_rsi.offline_max "$@"
