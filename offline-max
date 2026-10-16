@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+runner="${MLE_RSI_PYTHON:-}"
+if [[ -z "$runner" ]]; then
+  if [[ -x "$PWD/.venv/bin/python" ]]; then
+    runner="$PWD/.venv/bin/python"
+  elif [[ -x /mnt/afs/yangsen1/envs/dream-rsi-mle/bin/python ]]; then
+    runner=/mnt/afs/yangsen1/envs/dream-rsi-mle/bin/python
+  else
+    runner=python3
+  fi
+fi
+exec "$runner" -m mle_rsi.offline_max "$@"

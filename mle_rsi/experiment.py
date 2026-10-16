@@ -55,6 +55,9 @@ def frozen(root):
     value=read(Path(root)/'frozen-config.json')
     if value['source_hashes']!=source_manifest():
         raise RuntimeError('Sources changed after initialization; use a new run directory')
+    if value['spec'].get('offline_max'):
+        if sha(Path(root)/'offline-max-lineage.json') != value.get('offline_max_lineage_sha256'):
+            raise RuntimeError('Offline-max lineage changed')
     for path,expected in value.get('asset_hashes',{}).items():
         if sha(Path(root)/path)!=expected:raise RuntimeError('Frozen validation/runtime asset changed: '+path)
     if value['spec'].get('continuation_execution_fingerprint'):
@@ -88,7 +91,7 @@ async def task_lanes(spec,tasks,phase,run):
     return sorted(rows,key=lambda r:tasks.index(r['task']))
 
 
-def campaign(root, task, phase, *, initial_source=None, resource_pool=None, api_gate=None):
+def campaign(root, task, phase, *, initial_source=None, resource_pool=None, api_gate=None, config_only=False, connect_transport=True):
     root=Path(root);record=frozen(root);spec=copy.deepcopy(record['spec']);mode=record['mode']
     spec['execution']['cpu_ids']=(spec['execution']['cpu_ids'] if resource_pool is not None
                                   else task_cpu_ids(spec,task,phase))
@@ -96,7 +99,7 @@ def campaign(root, task, phase, *, initial_source=None, resource_pool=None, api_
     is_dev=phase=='development'
     if initial_source is None and spec.get('first_batch_fixes'):
         from .repair_policy import repair_best_first_source
-        initial_source=repair_best_first_source(width=spec['search']['workers'])
+        initial_source=repair_best_first_source(width=spec['search']['workers'], tunable=s.get('policy_tuning_trials',0)>1)
     prefix='dev' if is_dev else 'final'
     cid=f'{prefix}-{task}'
     mock_model=mode!='real'
@@ -115,6 +118,10 @@ def campaign(root, task, phase, *, initial_source=None, resource_pool=None, api_
           offline_from_original_root=True,offline_latest_prefix_only=True,any_node_parents=True,
           initial_policy='best-first',initial_policy_width=s['workers'],replay_missing_action='virtual',
           replay_virtual_model='calibrated',replay_virtual_depth=1,replay_node_budget=batches*s['workers'],
+          replay_node_budget_growth=s.get('replay_node_budget_growth'),
+          policy_tuning_trials=s.get('policy_tuning_trials',0),policy_tuning_scenarios=s.get('policy_tuning_scenarios',4),
+          counterfactual_episodes=s.get('counterfactual_episodes',0),
+          counterfactual_alternatives=s.get('counterfactual_alternatives',3),counterfactual_steps=s.get('counterfactual_steps',8),
           replay_objective='root_gain',replay_scoring='anytime_auc',replay_imputed_weight=1.,
           replay_beta_mode='policy_default',replay_free_refill=False,
           replay_virtual_per_parent=2,replay_virtual_ratio=1.,replay_virtual_max_gain=1.1,
@@ -130,6 +137,7 @@ def campaign(root, task, phase, *, initial_source=None, resource_pool=None, api_
           budget=BudgetConfig(max_discovery_calls=(2 if spec.get('diversity_trial') else 1)*max(100,batches*s['workers']*(s['development_rounds'] if is_dev else 1)),
                               max_developer_calls=max(30,s['development_rounds']*(s['policy_versions_per_round']-1)),
                               max_tokens=s.get('max_tokens',3000000)))
+    if config_only: return cfg
     backend=MLEBackend(task,root,spec,phase,mock=mode=='mock')
     backend.resource_pool = resource_pool
     def discovery_responder(messages,request_id):
@@ -140,17 +148,22 @@ def campaign(root, task, phase, *, initial_source=None, resource_pool=None, api_
         return json.dumps({'proposal':'Verification-only candidate','source':code,'language':'python',
                            'mechanism_tags':['verification']})
     def developer_responder(messages,request_id):
-        return json.dumps({'source':best_first_policy_source(width=1),'change_note':'Mock revision: narrow batch policy'})
-    c=Campaign(cfg,task_backend=backend,initial_policy_source_override=initial_source,
+        return json.dumps({'source':best_first_policy_source(tunable=cfg.policy_tuning_trials>1,width=1),'change_note':'Mock revision: narrow batch policy'})
+    lineage=read(root/'offline-max-lineage.json') if spec.get('offline_max') else None
+    c=Campaign(cfg,task_backend=backend,
+               inherited_evaluation_protocol=lineage['tasks'][task]['protocol_hash'] if lineage else None,initial_policy_source_override=initial_source,
                discovery_responder=discovery_responder if mock_model else None,
                developer_responder=developer_responder if mock_model else None)
+    if spec.get('offline_max'):
+        from .offline_max import OfflinePrompts
+        c.developer.prompt_builder=OfflinePrompts(c.developer.prompt_builder)
     if spec.get('diversity_trial'):
         from .diversity import NoveltyGate, DiversityPrompts
         c.agent.novelty_gate = NoveltyGate(c.store)
         c.agent.prompts = DiversityPrompts(c.agent.prompts)
         c.agent.max_response_attempts = 2
         c.store.put('metadata', 'diversity_trial', spec['diversity_trial'])
-    if not mock_model:
+    if not mock_model and connect_transport:
         load_key(spec)
         transport_class=GPTTransport if model.get('transport')=='gpt-chat' else GeminiTransport
         transport=transport_class(root,spec,task,phase,cid)

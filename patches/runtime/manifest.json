@@ -2,6 +2,14 @@
   "dream-rsi": {
     "base_commit": "72e8d105eaec6d07af7a5a78acd558475077ce2f",
     "files": {
+      "my_rsi/src/dream_rsi/campaign.py": {
+        "before": "fb3c2f49dd40954374f460a6133eadabe0c230a175dc84ab6fb8edd476abc0ae",
+        "after": "aaa1a9468b23238ae743870e992fd67eae96ab3c9db20c50f656795b82537cb9"
+      },
+      "my_rsi/src/dream_rsi/counterfactual.py": {
+        "before": "21cc7f2f7dbbaec4d665184603fb928d1cf887b3c6c4a2fedaf38edacceafe57",
+        "after": "3b895021b218f9578c2844902d015db7440431a27a37f961b1bb974a09924ba4"
+      },
       "my_rsi/src/dream_rsi/evidence.py": {
         "before": "916d1a39385aaceb12519b9a119f56e0033530563feefe30ec809ef2e597b808",
         "after": "25e54da8ddcccc21c36a5a6b316f91fbeb339b0c472565f85bb8dec5508509dc"

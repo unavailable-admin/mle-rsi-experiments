@@ -1,3 +1,321 @@
+diff --git a/my_rsi/src/dream_rsi/campaign.py b/my_rsi/src/dream_rsi/campaign.py
+index b204c80..090c8a7 100644
+--- a/my_rsi/src/dream_rsi/campaign.py
++++ b/my_rsi/src/dream_rsi/campaign.py
+@@ -34,7 +34,7 @@ from .workspaces import HistoryContextBuilder, SnapshotStore
+ 
+ class Campaign:
+     def __init__(self, config, store=None, discovery_responder=None, developer_responder=None, runner=None,
+-                 task_backend=None, initial_policy_source_override=None):
++                 task_backend=None, initial_policy_source_override=None, inherited_evaluation_protocol=None):
+         self.task_backend = task_backend
+         self.initial_policy_source_override = initial_policy_source_override
+         self.config = config.validate()
+@@ -110,6 +110,15 @@ class Campaign:
+             self.runtime["toolchain"] = CppCompiler(self.store).fingerprint(CppToolchain(eigen_include=config.eigen_include, eigen_version=config.eigen_version))
+             self.runtime["compiler_flags"] = ("-O3", "-march=native", "-std=c++17")
+         self.protocol_hash = ProtocolFingerprint.build(self.task,config.benchmark,self.runtime)
++        if inherited_evaluation_protocol is not None:
++            # An audited cross-host/search continuation retains immutable evaluation
++            # IDs, but separately seals the NEW runtime/search protocol on first use.
++            search_hash = self.protocol_hash
++            previous_search = self.store.get("metadata", "continuation_search_protocol")
++            if previous_search is not None and previous_search != search_hash:
++                raise InfrastructureError("Continuation search/runtime protocol changed")
++            self.store.put("metadata", "continuation_search_protocol", search_hash)
++            self.protocol_hash = inherited_evaluation_protocol
+         saved_protocol = self.store.get("metadata","protocol_hash")
+         if saved_protocol is not None and saved_protocol != self.protocol_hash:
+             raise InfrastructureError("Runtime/benchmark changed; cannot resume comparable history")
+@@ -319,121 +328,7 @@ class Campaign:
+                                                             "replay_world_ids":tuple(w.world_id for w in pool.worlds)})
+             self.checkpoints.save(self.config.campaign_id,checkpoint)
+         if checkpoint["phase"] in ("HISTORY_FROZEN","DREAMING"):
+-            checkpoint = {**checkpoint,"phase":"DREAMING"}
+-            self.checkpoints.save(self.config.campaign_id,checkpoint)
+-            pool = self._pool(checkpoint)
+-            objective = objective_from(self.config,checkpoint["beta1"],checkpoint["beta2"])
+-            evaluator = PoolEvaluator(objective,self.config.W,self.store,self.policy_limits,
+-                                      replay_parallelism=self.config.replay_parallelism,fixed_batch_size=self.config.fixed_batch_size,
+-                                      persistent_policy_workers=self.config.persistent_policy_workers,
+-                                      **replay_settings(self.config))
+-            versions = []
+-            base = self.store.get("policy",checkpoint["incumbent_id"])
+-            count = 1 if self.config.fixed_exploration else self.config.M
+-            for index in range(count):
+-                emit("Offline 策略", batch=0, done=index, total=count, detail=f"r{round_index:04d}-v{index:04d} / {count} 个版本（含现任）")
+-                version_id = f"r{round_index:04d}-v{index:04d}"
+-                revised_from = base
+-                version = self.store.get("policy",version_id)
+-                if version is None:
+-                    if index == 0:
+-                        proposal = {"source":base.source,"change_note":"Incumbent reevaluated on current frozen pool"}
+-                    else:
+-                        # Build complete feedback; the prompt layer selects bounded, audited inputs.
+-                        history = tuple(v for _,v in self.store.list("policy"))
+-                        feedback = DeveloperFeedbackBuilder.build(pool,history,self.config.W)
+-                        feedback['task'] = plain(self.task)
+-                        reference = self.store.get("policy",checkpoint["incumbent_id"])
+-                        if round_index == 1:
+-                            reference = self.store.get("policy","initial")
+-                        paired,control = await PairedPolicyAnalysis.prepare(
+-                            base,history,reference,pool,evaluator,self.config.K2,self.store,f"dream:{version_id}")
+-                        feedback["paired_comparison"] = paired
+-                        feedback["paired_control"] = plain(control)
+-                        if self.config.counterfactual_episodes:
+-                            feedback["counterfactual"] = await self._counterfactual(base,pool,evaluator,f"dream:{version_id}")
+-                        feedback["history_mode"] = "cumulative-original-root" if self.config.offline_from_original_root else "independent-rounds"
+-                        feedback["objective"] = {"beta1":checkpoint["beta1"],"beta2":checkpoint["beta2"],"W":self.config.W,"K2":self.config.K2,
+-                                                 "offline_latest_prefix_only":self.config.offline_latest_prefix_only,
+-                                                 "batches_per_round":self.config.K1,"nodes_per_round":self.config.round_discovery_calls,
+-                                                 "round_budget_unit":self.config.round_discovery_budget_unit}
+-                        if self.branching:
+-                            feedback["protocol"] = self.action_protocol
+-                            feedback["objective"].update(replay_settings(self.config),action_protocol=self.action_protocol,
+-                                                         fixed_batch_size=self.config.fixed_batch_size,
+-                                                         any_node_parents=self.config.any_node_parents,
+-                                                         aggregation="equal mean over world x beta x scenario; scenario 0 is original order without jitter")
+-                            if objective.fingerprint():
+-                                feedback["objective"].update(replay_objective=objective.fingerprint(),
+-                                                             policy_selection=self.config.policy_selection,
+-                                                             policy_tuning_trials=self.config.policy_tuning_trials,
+-                                                             dream_early_stop=self.config.dream_early_stop,
+-                                                             online_hotspot_slots=self.config.online_hotspot_slots)
+-                            if self.config.replay_beta_mode == "policy_default":
+-                                feedback["objective"]["aggregation"] = ("equal mean over world x scenario at the policy's own "
+-                                                                        "default_beta; scenario 0 is original order without jitter")
+-                        skipped = self.store.get('model_request_skip', f'dream:{version_id}')
+-                        if skipped:
+-                            # Durable: a provider failure already decided this version
+-                            # cannot be revised, so resume must not re-issue the call.
+-                            emit('Offline 策略修改', detail=f'{version_id} | 已记录的请求失败，跳过此版本', finished=True)
+-                            proposal = {'source':'', 'change_note':'Policy revision skipped after provider failure: '+str(skipped)}
+-                        else:
+-                            try:
+-                                proposal = await self.developer.revise(base,feedback,f"dream:{version_id}")
+-                            except ResponseError as exc:
+-                                proposal = {"source":"","change_note":str(exc)}
+-                            except ExternalUnknown as exc:
+-                                # A provider failure on one revision must not end the
+-                                # campaign: keep the incumbent and move to the next version.
+-                                if isinstance(exc,ModelRequestTimeout) and self.config.developer_model.timeout_attempts <= 1:
+-                                    raise
+-                                self.store.put('model_request_skip', f'dream:{version_id}', str(exc))
+-                                emit('Offline 策略修改',
+-                                     detail=f'{version_id} | 请求失败（{type(exc).__name__}），跳过此版本', finished=True)
+-                                proposal = {'source':'', 'change_note':'Model request failed; policy revision skipped: '+str(exc)}
+-                        proposal = await self._tuned(proposal,pool,evaluator,version_id)
+-                    version = self.registry.register(proposal["source"],base.version_id,proposal["change_note"],version_id)
+-                if version.evaluation is None:
+-                    try:
+-                        PolicySourceValidator.validate(version.source)
+-                        bundle = await evaluator.evaluate(version,pool,self.config.K2)
+-                    except PolicyError as exc:
+-                        bundle = EvaluationBundle(pool.pool_hash,(),None,"invalid",digest([version.source_hash,pool.pool_hash]),str(exc))
+-                    version = self.registry.attach_evaluation(version.version_id,bundle)
+-                if index == 0 and version.status != "valid":
+-                    raise InfrastructureError("Incumbent failed on frozen pool: "+str(version.evaluation.error))
+-                versions.append(version)
+-                if index > 0 and self.config.dream_early_stop and self._same_outcomes(version,revised_from):
+-                    # The revision reproduced its base in every episode; more
+-                    # revisions from the same evidence are unlikely to differ.
+-                    emit("Offline 策略", detail=f"{version_id} 与 {revised_from.version_id} 每个 episode 结果相同，提前结束本轮修改")
+-                    self.store.put("dream_progress",str(round_index),{"completed_versions":index+1,"pool_hash":pool.pool_hash,
+-                                                                      "early_stop":version_id})
+-                    break
+-                try:
+-                    PolicySourceValidator.validate(version.source)
+-                    # A revision that failed replay (e.g. a runtime error) is not a base to revise further.
+-                    if version.status == "valid":
+-                        base = version
+-                except PolicyError:
+-                    pass
+-                self.store.put("dream_progress",str(round_index),{"completed_versions":index+1,"pool_hash":pool.pool_hash})
+-            if self.config.policy_selection == "paired_bootstrap":
+-                selected,evidence = PolicySelector.paired_bootstrap(versions,versions[0].version_id,self.config.policy_selection_confidence,
+-                                                                    self.config.policy_selection_resamples,self.config.replay_beta_mode)
+-                self.store.put("selection_evidence",str(round_index),evidence)
+-            else:
+-                selected = PolicySelector.select(versions,versions[0].version_id)
+-            if self.config.online_hotspot_slots:
+-                from .hotspots import hotspot_report
+-                self.store.put("hotspots",str(round_index),hotspot_report(versions,versions[0].version_id,
+-                                                                          self.config.online_hotspot_slots))
+-            emit("策略选择", detail=f"{selected.version_id} mean_V={selected.mean_V:.6g}")
+-            self.registry.activate(selected.version_id,round_index+1)
+-            checkpoint = {**checkpoint,"phase":"SELECTED","selected_id":selected.version_id,
+-                          "evaluated_versions":len(versions),"selected_mean_V":selected.mean_V}
+-            self.checkpoints.save(self.config.campaign_id,checkpoint)
++            checkpoint = await self._dream(checkpoint, round_index)
+         if checkpoint["phase"] == "SELECTED":
+             tree = DiscoveryTree.from_payload(self.store.get("tree",tree_id))
+             nodes = tree.nodes[tree.initial_node_count:]
+@@ -451,6 +346,152 @@ class Campaign:
+             self.checkpoints.save(self.config.campaign_id,checkpoint)
+         return self.store.get("round_summary",str(round_index))
+ 
++    async def _dream(self, checkpoint, round_index, prefix="", save=None):
++        save = save or (lambda cp: self.checkpoints.save(self.config.campaign_id, cp))
++        record_key = prefix + str(round_index)
++        checkpoint = {**checkpoint,"phase":"DREAMING"}
++        save(checkpoint)
++        pool = self._pool(checkpoint)
++        objective = objective_from(self.config,checkpoint["beta1"],checkpoint["beta2"])
++        evaluator = PoolEvaluator(objective,self.config.W,self.store,self.policy_limits,
++                                  replay_parallelism=self.config.replay_parallelism,fixed_batch_size=self.config.fixed_batch_size,
++                                  persistent_policy_workers=self.config.persistent_policy_workers,
++                                  **replay_settings(self.config))
++        versions = []
++        base = self.store.get("policy",checkpoint["incumbent_id"])
++        count = 1 if self.config.fixed_exploration else self.config.M
++        for index in range(count):
++            emit("Offline 策略", batch=0, done=index, total=count, detail=f"r{round_index:04d}-v{index:04d} / {count} 个版本（含现任）")
++            version_id = f"{prefix}r{round_index:04d}-v{index:04d}"
++            revised_from = base
++            version = self.store.get("policy",version_id)
++            if version is None:
++                if index == 0:
++                    proposal = {"source":base.source,"change_note":"Incumbent reevaluated on current frozen pool"}
++                else:
++                    # Build complete feedback; the prompt layer selects bounded, audited inputs.
++                    history = tuple(v for _,v in self.store.list("policy"))
++                    feedback = DeveloperFeedbackBuilder.build(pool,history,self.config.W)
++                    feedback['task'] = plain(self.task)
++                    reference = self.store.get("policy",checkpoint["incumbent_id"])
++                    if round_index == 1:
++                        reference = self.store.get("policy","initial")
++                    paired,control = await PairedPolicyAnalysis.prepare(
++                        base,history,reference,pool,evaluator,self.config.K2,self.store,f"dream:{version_id}")
++                    feedback["paired_comparison"] = paired
++                    feedback["paired_control"] = plain(control)
++                    if self.config.counterfactual_episodes:
++                        feedback["counterfactual"] = await self._counterfactual(base,pool,evaluator,f"dream:{version_id}")
++                    feedback["history_mode"] = "cumulative-original-root" if self.config.offline_from_original_root else "independent-rounds"
++                    feedback["objective"] = {"beta1":checkpoint["beta1"],"beta2":checkpoint["beta2"],"W":self.config.W,"K2":self.config.K2,
++                                             "offline_latest_prefix_only":self.config.offline_latest_prefix_only,
++                                             "batches_per_round":self.config.K1,"nodes_per_round":self.config.round_discovery_calls,
++                                             "round_budget_unit":self.config.round_discovery_budget_unit}
++                    if self.branching:
++                        feedback["protocol"] = self.action_protocol
++                        feedback["objective"].update(replay_settings(self.config),action_protocol=self.action_protocol,
++                                                     fixed_batch_size=self.config.fixed_batch_size,
++                                                     any_node_parents=self.config.any_node_parents,
++                                                     aggregation="equal mean over world x beta x scenario; scenario 0 is original order without jitter")
++                        if objective.fingerprint():
++                            feedback["objective"].update(replay_objective=objective.fingerprint(),
++                                                         policy_selection=self.config.policy_selection,
++                                                         policy_tuning_trials=self.config.policy_tuning_trials,
++                                                         dream_early_stop=self.config.dream_early_stop,
++                                                         online_hotspot_slots=self.config.online_hotspot_slots)
++                        if self.config.replay_beta_mode == "policy_default":
++                            feedback["objective"]["aggregation"] = ("equal mean over world x scenario at the policy's own "
++                                                                    "default_beta; scenario 0 is original order without jitter")
++                    skipped = self.store.get('model_request_skip', f'dream:{version_id}')
++                    if skipped:
++                        # Durable: a provider failure already decided this version
++                        # cannot be revised, so resume must not re-issue the call.
++                        emit('Offline 策略修改', detail=f'{version_id} | 已记录的请求失败，跳过此版本', finished=True)
++                        proposal = {'source':'', 'change_note':'Policy revision skipped after provider failure: '+str(skipped)}
++                    else:
++                        try:
++                            proposal = await self.developer.revise(base,feedback,f"dream:{version_id}")
++                        except ResponseError as exc:
++                            proposal = {"source":"","change_note":str(exc)}
++                        except ExternalUnknown as exc:
++                            # A provider failure on one revision must not end the
++                            # campaign: keep the incumbent and move to the next version.
++                            if isinstance(exc,ModelRequestTimeout) and self.config.developer_model.timeout_attempts <= 1:
++                                raise
++                            self.store.put('model_request_skip', f'dream:{version_id}', str(exc))
++                            emit('Offline 策略修改',
++                                 detail=f'{version_id} | 请求失败（{type(exc).__name__}），跳过此版本', finished=True)
++                            proposal = {'source':'', 'change_note':'Model request failed; policy revision skipped: '+str(exc)}
++                    proposal = await self._tuned(proposal,pool,evaluator,version_id)
++                version = self.registry.register(proposal["source"],base.version_id,proposal["change_note"],version_id)
++            if version.evaluation is None:
++                try:
++                    PolicySourceValidator.validate(version.source)
++                    bundle = await evaluator.evaluate(version,pool,self.config.K2)
++                except PolicyError as exc:
++                    bundle = EvaluationBundle(pool.pool_hash,(),None,"invalid",digest([version.source_hash,pool.pool_hash]),str(exc))
++                version = self.registry.attach_evaluation(version.version_id,bundle)
++            if index == 0 and version.status != "valid":
++                raise InfrastructureError("Incumbent failed on frozen pool: "+str(version.evaluation.error))
++            versions.append(version)
++            if index > 0 and self.config.dream_early_stop and self._same_outcomes(version,revised_from):
++                # The revision reproduced its base in every episode; more
++                # revisions from the same evidence are unlikely to differ.
++                emit("Offline 策略", detail=f"{version_id} 与 {revised_from.version_id} 每个 episode 结果相同，提前结束本轮修改")
++                self.store.put("dream_progress",record_key,{"completed_versions":index+1,"pool_hash":pool.pool_hash,
++                                                                  "early_stop":version_id})
++                break
++            try:
++                PolicySourceValidator.validate(version.source)
++                # A revision that failed replay (e.g. a runtime error) is not a base to revise further.
++                if version.status == "valid":
++                    base = version
++            except PolicyError:
++                pass
++            self.store.put("dream_progress",record_key,{"completed_versions":index+1,"pool_hash":pool.pool_hash})
++        if self.config.policy_selection == "paired_bootstrap":
++            selected,evidence = PolicySelector.paired_bootstrap(versions,versions[0].version_id,self.config.policy_selection_confidence,
++                                                                self.config.policy_selection_resamples,self.config.replay_beta_mode)
++            self.store.put("selection_evidence",record_key,evidence)
++        else:
++            selected = PolicySelector.select(versions,versions[0].version_id)
++        if self.config.online_hotspot_slots:
++            from .hotspots import hotspot_report
++            self.store.put("hotspots",record_key,hotspot_report(versions,versions[0].version_id,
++                                                                      self.config.online_hotspot_slots))
++        emit("策略选择", detail=f"{selected.version_id} mean_V={selected.mean_V:.6g}")
++        self.registry.activate(selected.version_id,round_index+1)
++        checkpoint = {**checkpoint,"phase":"SELECTED","selected_id":selected.version_id,
++                      "evaluated_versions":len(versions),"selected_mean_V":selected.mean_V}
++        save(checkpoint)
++        return checkpoint
++
++    async def refresh_offline(self, boundary):
++        """Replay a completed boundary without online calls or overwriting round evidence."""
++        with self.store.writer():
++            key = str(boundary)
++            cp = self.checkpoints.load(self.config.campaign_id)
++            done = self.store.get("offline_refresh", key)
++            if done:
++                return done
++            if cp["phase"] != "ROUND_COMPLETED" or cp["completed_rounds"] != boundary:
++                raise InfrastructureError("Offline refresh requires an exact completed boundary")
++            state = self.store.get("offline_refresh_state", key)
++            if state is None:
++                state = {k:v for k,v in cp.items() if k not in ("pool_hash", "selected_id", "selected_mean_V")}
++                state["phase"] = "HISTORY_FROZEN"
++                state["pool_hash"] = self._pool(state).pool_hash
++            if state["phase"] != "SELECTED":
++                state = await self._dream(state, boundary, "offline-max-",
++                    lambda value: self.store.put("offline_refresh_state", key, value))
++            result = {"boundary":boundary, "selected_id":state["selected_id"],
++                      "selected_mean_V":state["selected_mean_V"],
++                      "evaluated_versions":state["evaluated_versions"],
++                      "pool_hash":state["pool_hash"], "candidate_nodes":len(self.store.list("node"))}
++            self.checkpoints.save(self.config.campaign_id, {**cp, "incumbent_id":state["selected_id"]})
++            self.store.put("offline_refresh", key, result)
++            return result
++
+     async def run(self, resume_id=None):
+         with self.store.writer():
+             async with campaign_time_budget(self.store,self.config.max_wall_time_s):
+diff --git a/my_rsi/src/dream_rsi/counterfactual.py b/my_rsi/src/dream_rsi/counterfactual.py
+index 06841d7..57d995f 100644
+--- a/my_rsi/src/dream_rsi/counterfactual.py
++++ b/my_rsi/src/dream_rsi/counterfactual.py
+@@ -96,7 +96,7 @@ async def counterfactual_report(source, pool, evaluator, replay_limits, episodes
+         for row in rows.values():
+             row["regret"] = max([0.]+[a["delta_V"] for a in row["alternatives"]])
+             row["alternatives"].sort(key=lambda a:-a["delta_V"])
+-        cap = replay_node_cap(world,evaluator.node_budget_ratio,evaluator.node_budget) or len(world.nodes)-1
++        cap = replay_node_cap(world,evaluator.node_budget_ratio,evaluator.node_budget,evaluator.node_budget_growth) or len(world.nodes)-1
+         root = world.nodes[0].score
+         reachable = [n.score for n in world.nodes[1:] if n.evaluation.valid and n.depth <= cap]
+         result.append({"world_id":world.world_id,"scenario_seed":seed,"beta":beta,"V":V,
 diff --git a/my_rsi/src/dream_rsi/evidence.py b/my_rsi/src/dream_rsi/evidence.py
 index 61f7777..9b97bb7 100644
 --- a/my_rsi/src/dream_rsi/evidence.py

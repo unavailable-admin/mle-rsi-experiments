@@ -5,8 +5,8 @@ from dream_rsi.policy import best_first_policy_source
 from dream_rsi.repair_guard import repair_parent_ids
 
 
-def repair_best_first_source(width=2):
-    source = best_first_policy_source(width=width, exploration_slots=1 if width >= 3 else 0)
+def repair_best_first_source(width=2, tunable=False):
+    source = best_first_policy_source(tunable=tunable,max_width=width,width=width, exploration_slots=1 if width >= 3 else 0)
     source = source.replace('    def decide(self, view, state):', '    def _best_first(self, view, state):')
     helper = inspect.getsource(repair_parent_ids).replace('def repair_parent_ids(nodes, eligible, slots):',
                                                        'def _repairs(self, nodes, eligible, slots):')

@@ -18,7 +18,7 @@ def inspect(workspace, execution=None):
         'torch_checkpoints':['/models/torch/hub/checkpoints/'+p.name for p in sorted(checkpoints.glob('*')) if p.is_file()],
         'pretrained_directories':['/models/pretrained/'+str(p.relative_to(models)) for p in sorted(models.glob('*/*')) if p.is_dir()],
         'notes':['Network disabled inside candidates. Weights must already exist.',
-                 'This worker uses PyTorch 2.7.1 with CUDA 12.8 and RTX 5090; use the recorded package versions.',
+                 'Use the recorded package versions and the task budget; GPU hardware depends on the host.',
                  'LightGBM is CPU-only. Missing packages cannot be installed inside candidates.',
                  'Import mle_runtime; load_resnet50() loads the available checkpoint or raises explicitly.',
                  'Use remaining_seconds() and progress(stage, ...) before costly fit/refit/prediction stages.']}

@@ -73,6 +73,10 @@ def main():
                (public,Path('/data'),True),
                (directory/'agent.py',Path('/agent.py'),True),(directory/'task.json',Path('/task.json'),True),
                (work,Path('/output'),False)]
+        for dependency in execution.get('python_extra_mounts',[]):
+            path=Path(dependency).resolve()
+            if not path.is_dir():raise RuntimeError('Missing Python dependency mount: '+str(path))
+            pairs.append((path,path,True))
         if validation:
             pairs.append((root/'runtime',Path('/runtime'),True))
             pairs.append((prepared/'manifest.json',Path('/validation/manifest.json'),True))

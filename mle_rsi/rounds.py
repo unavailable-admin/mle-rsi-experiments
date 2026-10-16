@@ -89,6 +89,14 @@ def export_round(root, task, store, number):
         (out/'solver.py').write_text(node.artifact.source)
         if diagnostics.get('output_dir'):
             source = Path(diagnostics['output_dir'])/'submission.csv'
+            lineage_path = root/'offline-max-lineage.json'
+            if lineage_path.exists() and not source.exists():
+                # An inherited winner may remain best on the new host. Locate its
+                # immutable exported submission by hash, never rewrite old nodes.
+                expected = diagnostics['submission_sha256']
+                matches = [p for p in sorted((root/'rounds').glob('*/'+task+'/submission.csv')) if sha(p)==expected]
+                if not matches: raise RuntimeError('Inherited best submission missing: '+task)
+                source = matches[-1]
             if sha(source) != diagnostics['submission_sha256']:
                 raise RuntimeError('Candidate submission changed')
             shutil.copyfile(source, out/'submission.csv')
@@ -168,6 +176,15 @@ async def run(root, through_round=None):
             if action(root) in ('pause', 'stop') or time.time() >= deadline:
                 return
             try:
+                if spec.get('offline_max'):
+                    boundary = spec['offline_max']['boundary']
+                    marker = root/'offline-max'/f'{task}.json'
+                    if not marker.exists():
+                        from .offline_max import refresh
+                        status(root, task, 'offline_refresh', round=boundary)
+                        await refresh(c, root, boundary)
+                    if action(root) in ('pause','stop') or time.time() >= deadline:
+                        return
                 cp = c.checkpoints.load(c.config.campaign_id)
                 # Recover report-only work first, including private grading after a crash.
                 for past in range(1, cp['completed_rounds']+1):
@@ -222,6 +239,25 @@ async def run(root, through_round=None):
             c.scheduler.after_batch = after_batch
             campaigns[task] = c
             await c.bootstrap()
+        if spec.get('offline_max'):
+            # Finish the initial refresh wave before any new online work. No
+            # candidate/grading/private inputs enter this refresh stage.
+            from .offline_max import refresh
+            async def initial_refresh(task, c):
+                async with task_gate:
+                    if action(root) in ('pause','stop') or time.time() >= deadline:
+                        return
+                    marker=root/'offline-max'/f'{task}.json'
+                    if marker.exists(): return
+                    try:
+                        status(root,task,'offline_refresh',round=spec['offline_max']['boundary'])
+                        await refresh(c,root,spec['offline_max']['boundary'])
+                    except Exception as exc:
+                        blocked[task]=f'{type(exc).__name__}: {exc}'
+                        status(root,task,'blocked',reason=blocked[task])
+                        (root/'task-status'/f'{task}.log').write_text(traceback.format_exc())
+            overall('offline_refresh',round=spec['offline_max']['boundary'])
+            await asyncio.gather(*(initial_refresh(t,c) for t,c in campaigns.items()))
         while True:
             if action(root) == 'stop':
                 overall('stopped', blocked=blocked)

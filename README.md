@@ -124,3 +124,7 @@ The October 15, 2026 run completed 200 candidates: private Log Loss **0.28661**
 charges were **$3.20759979**, including **$1.45031556** from the original 100.
 Selection used public validation; private grading ran after search completion.
 These are one-run observations, not a controlled estimate of the intervention.
+
+## Offline-max continuation
+
+For the 5090 round-four → 4090 half-machine experiment, see [offline-max commands and protocol](docs/offline-max.md). The source run must stop at the complete fourth-round boundary; the new run refreshes offline policies before admitting round five.
