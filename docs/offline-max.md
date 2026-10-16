@@ -118,3 +118,23 @@ Validation before launch:
 # Optional repeat of native probes in a NEW verification-only directory:
 /mnt/afs/yangsen1/envs/dream-rsi-mle/bin/python scripts/verify_offline_max.py /path/to/new-readiness-run
 ```
+
+## Verification evidence (2026-10-16)
+
+- Full suite on a clean local clone with pinned submodules and restored patches:
+  76 passed, 13 skipped. The skipped tests require other ML environments.
+- Native 4090 verification:
+  `/mnt/afs/yangsen1/runs/offline-max-native-readiness-003/readiness.json`.
+  Four valid four-core GPU candidates used GPU 0, 1, 2, 3; one valid eight-core
+  CPU candidate used no GPU. No paid model call or private grading occurred.
+- Full offline settings, using a synthetic 100-candidate fourth-round history:
+  `/mnt/afs/yangsen1/runs/offline-max-full-readiness-001/verification.json`.
+  Five versions evaluated, four tuning reports with `[48, 48, 48, 48]` trials,
+  four counterfactual reports; candidate count stayed 100. Identical mock policy
+  sources correctly reuse cached replay episodes. This verifies orchestration,
+  not real search quality or medal gains.
+- The results, tree and resource viewers returned successful responses and the
+  expected run identity on ports 19070–19072. Verification viewers were stopped.
+- Authenticated model-list GET succeeded; no generation request was made.
+- The actual 5090 fourth-round export is not yet imported. It is checked by the
+  export/start commands when the user decides the source boundary is ready.
