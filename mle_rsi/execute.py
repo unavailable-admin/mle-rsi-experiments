@@ -63,6 +63,11 @@ def main():
         task_data=read(directory/'task.json')
         task_data['budget'].update(wall_seconds=timeout,gpu_count=int(gpu is not None))
         write(directory/'task.json',task_data)
+        # FUSE AFS cannot id-map these bind mounts. Container root is a host
+        # subordinate UID, so a controller umask of 0027 must not hide inputs.
+        from .mount_permissions import readable_input
+        for name in ('agent.py', 'task.json'):
+            readable_input(directory/name)
         environment=Path(execution['python_environment'])
         public=WORKSPACE/'data/mlebench'/task/'prepared/public'
         prepared=root/'prepared'/task

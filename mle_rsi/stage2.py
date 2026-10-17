@@ -205,6 +205,8 @@ def local_preflight(root):
     record=frozen(root);spec=record['spec'];execution=spec['execution']
     if record['mode']=='mock':return {'mode':'mock'}
     if execution['host_name']!=socket.gethostname():raise ValueError('Wrong execution host')
+    from .mount_permissions import prepare_run_inputs
+    prepare_run_inputs(root)
     if not set(execution['cpu_ids'])<=os.sched_getaffinity(0):raise ValueError('CPU allocation unavailable')
     for path in [Path(execution['python_environment'])/'bin/python',Path(execution['pretrained_models']),Path(spec['model']['credential_file'])]:
         if not path.exists():raise ValueError('Missing runtime input: '+str(path))

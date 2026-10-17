@@ -89,3 +89,7 @@ ssh -p 60000 -N -o ExitOnForwardFailure=yes \
 日志：`/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/controller.log`。暂停、继续由总览页面控制；未启动控制器时按钮禁用。
 
 共享存储迁移只调整部署位置、启动默认路径和各 campaign 的 `output_dir`。原账本、正式轮次封存、验证数据和历史 lineage 保持原样；迁移前配置及逐文件内容校验证据保存在实验目录 `evidence/shared-storage-migration/`。历史证据中保留原始绝对路径，不做文本批量替换。
+
+## 共享存储权限修复后的恢复
+
+2026-10-17 首次启动 Dog R8 的 5 个候选因 AFS 权限失败，API 已结算 $0.1242282。已保留这些 attempts 和费用并停止控制器。修复后的 `stage2 start` 会继续原 run；不必新建实验或清空预算。启动检查调整 candidate-visible runtime/prepared 权限；新候选代码和任务输入显式设为可读，避免继承 0027 umask 后再次失败。真实容器读写检查通过（73 个输入文件，输出及缓存可写），测试 11 passed。证据见实验目录 `evidence/permission-fix/`。
