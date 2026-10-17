@@ -13,12 +13,16 @@
 - 最终离线测试 87 passed、13 skipped；证据位于 `docs/evidence/20261017-stage2/`。运行环境和认证模型列表检查通过，无付费 API 调用。
 - cumulative policy 输入去掉重复的旧整树，与 replay 一致；Cactus R11 输入从 25,578,723 字节降至 340,980 字节，可见节点和可选父节点均保持 251。
 - 默认 offline baseline；新增轻量/max 配置与实际次数记录。Tabular May/RANZCR/Melanoma 定向上限 1800 秒，其余 900 秒。新候选声明 CPU/GPU、记录验证/最终训练配置，并可原子封存完整输出、缓存确定性冻结特征。
-- Cactus 新划分及两份公共 AUC 并列候选复核计划在 `/mnt/afs/yangsen1/experiments/lite22-stage2-001/evidence/cactus-recheck-boundary`；未重训。独立划分复核、同代码时限配对和 offline 强度对照的实测收益仍待正式实验，不能声称已证实提升。
+- Cactus 新划分及两份公共 AUC 并列候选复核计划在 `/mnt/afs/yangsen1/experiments/lite22-stage2-001/evidence/cactus-recheck-boundary`；现已完成两份冻结代码的新划分重训，结果见下。其余同代码时限配对和 offline 强度对照的实测收益仍待实验。
 - 旧两笔执行 running 和一笔 API uncertain 原样保留预留；新 run 按封存 lineage 隔离历史请求，使用 stage2 请求/执行命名空间。旧费用缺失不伪造结算。
 
 ### 启动后的权限修复（2026-10-17）
 
 用户启动后，Dog R8 首批 5 个候选因共享文件权限拒绝而退出，API 合计 $0.1242282。已停止控制器，保留失败 attempts 和全部费用；未重发请求。原因是容器映射 UID 无法读取 640/750 的 AFS 输入。现启动前调整 runtime/prepared 的非秘密输入读/遍历权限，execute 在创建 agent.py/task.json 后显式调整只读权限，兼容 umask 0027。凭据、API 日志、外部符号链接目标不改权限。真实 Sysbox GPU 配置容器验证 73 个输入可读、输出及缓存可写；无训练/付费调用，专项测试 11 passed。部署源码变更和冻结哈希更新已留证于 `evidence/permission-fix/`，账本和资产内容未变。当前 stopped，用户用 `stage2 start` 继续原 run，不清空历史或预算。
+
+### Cactus 新划分实测复核（2026-10-17）
+
+用户已授权执行。仅比较预先冻结的 R1 solver 与 tree-0001:n5；划分 seed=20261017，训练 seed=0，相同 GPU7/8 CPU/900秒上限，无生成 API、无私榜评分。原 solver AUC=0.9999940292、logloss=0.00310920；对照 AUC=0.9999973463、logloss=0.00157595。新验证集 2835 行，573 行与旧验证集重合。AUC 差值 0.0000033171，1000 次配对分层 bootstrap 95% 区间 [-0.0000079611, 0.0000179124] 包含0。能打破旧验证满分并列，但单划分/单训练种子不足以证明稳定优胜或得牌收益；未修改主实验划分、选优或提交。两次成功训练及一次缺 task 字段的训练前失败合计约59.69秒执行/GPU时间，均计入主 run 的 Cactus development 账本，API新增0。证据：`docs/evidence/20261017-stage2/cactus-recheck/analysis.json`；完整训练产物在实验 `evidence/cactus-recheck-boundary/retrain-seed0/`。
 
 ## 第一阶段整理时的授权与工作边界（历史记录）
 

@@ -1,0 +1,144 @@
+{
+  "split_seed": 20261017,
+  "training_seed": 0,
+  "n_validation": 2835,
+  "n_positive": 2126,
+  "old_validation_overlap": 573,
+  "new_validation_count": 2835,
+  "rows": [
+    {
+      "candidate": "round-0001",
+      "auc": 0.9999940291932644,
+      "logloss": 0.0031091981099566255,
+      "accuracy_at_0_5": 0.9989417989417989,
+      "wrong_pairs": 9,
+      "tied_pairs": 0,
+      "total_pairs": 1507334,
+      "resources": {
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 23.97318730398547,
+        "sampled_cpu_seconds": 22.779399,
+        "sampled_peak_cgroup_memory_bytes": 1407131648,
+        "sampled_peak_process_vram_bytes": 1168113664,
+        "gpu": 7,
+        "gpu_allocated_seconds": 23.97318730398547,
+        "samples": 12,
+        "image_id": "sha256:859eb2ba86a41e3a360e9d726a183147a20faa990bfd5f7f3e4f4372b375f00f",
+        "container_id": "bd232b37d57cb63597f6d5b4e3dfccf27995ce396b51b21aef1713c4185261f7",
+        "runtime": "sysbox-runc",
+        "network_disabled": true,
+        "cpu_affinity": [
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63
+        ],
+        "memory_limit": "32g",
+        "shm_size": "4G",
+        "measurement_notes": [
+          "Sampled cgroup CPU can miss the final tail; peaks can miss short transients.",
+          "Cgroup memory includes page cache; it differs from host process-tree RSS.",
+          "Container UID 0 is namespaced by Sysbox; host inputs are read-only."
+        ]
+      }
+    },
+    {
+      "candidate": "tied-comparator",
+      "auc": 0.9999973463081175,
+      "logloss": 0.0015759493876145308,
+      "accuracy_at_0_5": 0.999647266313933,
+      "wrong_pairs": 4,
+      "tied_pairs": 0,
+      "total_pairs": 1507334,
+      "resources": {
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 33.889813255053014,
+        "sampled_cpu_seconds": 135.199256,
+        "sampled_peak_cgroup_memory_bytes": 1464418304,
+        "sampled_peak_process_vram_bytes": 945815552,
+        "gpu": 7,
+        "gpu_allocated_seconds": 33.889813255053014,
+        "samples": 17,
+        "image_id": "sha256:859eb2ba86a41e3a360e9d726a183147a20faa990bfd5f7f3e4f4372b375f00f",
+        "container_id": "5d4df8f16b6b305e1417a7a5ba6f51362b613bca809e318a9ac6e1360b5eb578",
+        "runtime": "sysbox-runc",
+        "network_disabled": true,
+        "cpu_affinity": [
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63
+        ],
+        "memory_limit": "32g",
+        "shm_size": "4G",
+        "measurement_notes": [
+          "Sampled cgroup CPU can miss the final tail; peaks can miss short transients.",
+          "Cgroup memory includes page cache; it differs from host process-tree RSS.",
+          "Container UID 0 is namespaced by Sysbox; host inputs are read-only."
+        ]
+      }
+    }
+  ],
+  "auc_delta_comparator_minus_original": 3.317114853129688e-06,
+  "paired_stratified_bootstrap_delta_ci95": [
+    -7.961075647489047e-06,
+    1.7912420206767088e-05
+  ],
+  "bootstrap_replicates": 1000,
+  "prediction_mean_absolute_difference": 0.00233479533850992,
+  "limitation": "One new split and one training seed per frozen solver; public data already explored; no private grading, no untouched generalization claim.",
+  "accounting": {
+    "entries": {
+      "stage2:cactus-public-recheck:split20261017:seed0:round-0001": {
+        "task": "aerial-cactus-identification",
+        "phase": "development",
+        "state": "completed",
+        "wall_seconds": 1.8233856660081074,
+        "gpu_seconds": 1.8233856660081074,
+        "started_at": 1792233754.9145226,
+        "exit_code": 1,
+        "timed_out": false,
+        "purpose": "public_split_recheck"
+      },
+      "stage2:cactus-public-recheck:split20261017:seed0:attempt2:round-0001": {
+        "task": "aerial-cactus-identification",
+        "phase": "development",
+        "state": "completed",
+        "wall_seconds": 23.97318730398547,
+        "gpu_seconds": 23.97318730398547,
+        "started_at": 1792233783.5887122,
+        "exit_code": 0,
+        "timed_out": false,
+        "purpose": "public_split_recheck"
+      },
+      "stage2:cactus-public-recheck:split20261017:seed0:attempt2:tied-comparator": {
+        "task": "aerial-cactus-identification",
+        "phase": "development",
+        "state": "completed",
+        "wall_seconds": 33.889813255053014,
+        "gpu_seconds": 33.889813255053014,
+        "started_at": 1792233809.3036544,
+        "exit_code": 0,
+        "timed_out": false,
+        "purpose": "public_split_recheck"
+      }
+    },
+    "total_execution_seconds": 59.68638622504659,
+    "total_gpu_seconds": 59.68638622504659,
+    "api_cost_usd": 0,
+    "private_grading_calls": 0,
+    "includes_preflight_failure": true
+  },
+  "main_run_selection_unchanged": true,
+  "completed_at": 1792233883.0497675
+}

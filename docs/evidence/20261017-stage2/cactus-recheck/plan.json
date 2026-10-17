@@ -1,0 +1,25 @@
+{
+  "state": "prepared_not_trained",
+  "seed": 20261017,
+  "candidates": [
+    {
+      "source": "round-0001.py",
+      "sha256": "a3135f12519703c1507dbd5966c0da9232a8683f3bbb9f967400b2dc4389b57f",
+      "original_round": 1,
+      "original_public_score": 1.0
+    },
+    {
+      "source": "tied-comparator.py",
+      "sha256": "f0d190bd3907b3bc2da7071a99a9ef76766f4903190ecff72f054f558cfc4e71",
+      "node_id": "tree-0001:n5",
+      "original_public_score": 1.0,
+      "purpose": "independent retraining comparator; not a selected winner"
+    }
+  ],
+  "manifest_sha256": "a55bf122a90624d250733698d862a8e75c28d1ba2ca614d21f18bf03dd65b15f",
+  "requires_fresh_training": true,
+  "same_source_and_resources_for_each_candidate": true,
+  "selection_basis": "public scores only",
+  "historical_scores_not_comparable": true,
+  "limitation": "A fresh split of already explored public data is a robustness diagnostic, not an untouched test set."
+}
