@@ -224,7 +224,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('command',choices=('audit','prepare','check','view','start'))
     p.add_argument('--source',type=Path,default=Path('/opt/mle-rsi-next/runs/lite22-medal-001'))
-    p.add_argument('--run-dir',type=Path,default=Path('/opt/mle-rsi-stage2/runs/lite22-stage2-001'))
+    p.add_argument('--run-dir',type=Path,default=Path('/mnt/afs/yangsen1/experiments/lite22-stage2-001/run'))
     a=p.parse_args()
     if a.command=='audit':print(json.dumps(boundary_audit(a.source),indent=2));return
     if a.command=='prepare':print(prepare(a.source,a.run_dir));return

@@ -32,28 +32,39 @@
 
 14 个已得牌任务继续封存。未完成的后续轮次不进入新搜索历史，但发生的全部费用和不确定预留保留。导入的是完整公共搜索历史及策略状态，不是只拿冠军 solver。按公共分数选择解，不按 private 分数倒挑起点。
 
-新目录 `/opt/mle-rsi-stage2/runs/lite22-stage2-001`；部署代码 `/opt/mle-rsi-stage2/code`。父实验 `/opt/mle-rsi-next/runs/lite22-medal-001` 不修改。新请求和执行目录使用 stage2 前缀，避免与归档的轮中请求 ID 冲突。`stage2-lineage.json` 保存起点、父记录哈希、新增授权、历史未结算记录和停机证据。
+新目录 `/mnt/afs/yangsen1/experiments/lite22-stage2-001/run`；部署代码 `/mnt/afs/yangsen1/experiments/lite22-stage2-001/code`。父实验 `/opt/mle-rsi-next/runs/lite22-medal-001` 不修改。新请求和执行目录使用 stage2 前缀，避免与归档的轮中请求 ID 冲突。`stage2-lineage.json` 保存起点、父记录哈希、新增授权、历史未结算记录和停机证据。
+
+代码与结果均放在共享存储的独立实验目录：
+
+```text
+/mnt/afs/yangsen1/experiments/lite22-stage2-001/
+├── code/      # 本次实验冻结代码
+├── run/       # 导入历史、新结果、账本及日志
+└── evidence/  # 准备与迁移证据
+```
+
+开发仍只在 `/mnt/afs/yangsen1/projects/mle-rsi-experiments` 的 `bug-fix` 分支进行。当前部署仍绑定 5090；Python 环境、模型与 GPU 配置沿用已有本机依赖，共享代码/结果不等于可直接换机启动。原 `/opt/mle-rsi-stage2` 部署在校验后退役。
 
 ## 检查、可视化及启动
 
 5090 主机：
 
 ```bash
-cd /opt/mle-rsi-stage2/code
+cd /mnt/afs/yangsen1/experiments/lite22-stage2-001/code
 /opt/mle-rsi-fixes/controller-env/bin/python -m mle_rsi.stage2 check
 ```
 
 只启动可视化（不启动控制器、不发生成请求）：
 
 ```bash
-cd /opt/mle-rsi-stage2/code
+cd /mnt/afs/yangsen1/experiments/lite22-stage2-001/code
 /opt/mle-rsi-fixes/controller-env/bin/python -m mle_rsi.stage2 view
 ```
 
 明确启动新实验：
 
 ```bash
-cd /opt/mle-rsi-stage2/code
+cd /mnt/afs/yangsen1/experiments/lite22-stage2-001/code
 /opt/mle-rsi-fixes/controller-env/bin/python -m mle_rsi.stage2 start
 ```
 
@@ -75,4 +86,6 @@ ssh -p 60000 -N -o ExitOnForwardFailure=yes \
 - 搜索树：<http://127.0.0.1:19171/>
 - 资源：<http://127.0.0.1:19172/>
 
-日志：`/opt/mle-rsi-stage2/runs/lite22-stage2-001/controller.log`。暂停、继续由总览页面控制；未启动控制器时按钮禁用。
+日志：`/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/controller.log`。暂停、继续由总览页面控制；未启动控制器时按钮禁用。
+
+共享存储迁移只调整部署位置、启动默认路径和各 campaign 的 `output_dir`。原账本、正式轮次封存、验证数据和历史 lineage 保持原样；迁移前配置及逐文件内容校验证据保存在实验目录 `evidence/shared-storage-migration/`。历史证据中保留原始绝对路径，不做文本批量替换。

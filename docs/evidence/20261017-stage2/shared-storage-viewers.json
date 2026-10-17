@@ -1,0 +1,19 @@
+{
+  "created_at": 1792230913.7136078,
+  "run_dir": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run",
+  "code_dir": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/code",
+  "viewers": {
+    "19170": 200,
+    "19171": 200,
+    "19172": 200
+  },
+  "controller_started": false,
+  "training_started": false,
+  "paid_calls": 0,
+  "control": "pause",
+  "retired_count": 14,
+  "budget_sha256": "cc8010304c36ec0fabe01a0baaabbd96e8a5db45441b56887d33ee67f23226b7",
+  "budget_preserved": true,
+  "old_stage2_copy_removed": true,
+  "targeted_tests": "10 passed"
+}

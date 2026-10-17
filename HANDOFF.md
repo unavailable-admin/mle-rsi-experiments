@@ -6,13 +6,14 @@
 
 本节及 `docs/stage2.md` 覆盖下方第一阶段整理时的授权和待办状态。已按用户要求实现十项待办的工程支持，并准备独立新实验。用户明确授权新增 API 总计 $150、每题 $15、每题执行/GPU 各 50 小时；历史账本和未结算预留完整保留。不自动启动训练或生成请求。
 
-- 开发分支仍为 `bug-fix`。新部署 `/opt/mle-rsi-stage2/code`，新 run `/opt/mle-rsi-stage2/runs/lite22-stage2-001`。
+- 开发分支仍为 `bug-fix`。新部署 `/mnt/afs/yangsen1/experiments/lite22-stage2-001/code`，新 run `/mnt/afs/yangsen1/experiments/lite22-stage2-001/run`。
+- 已完成共享存储迁移：新实验代码、结果、日志和证据统一位于上述实验目录；原 `/opt/mle-rsi-stage2` 副本已清理。22 题配置加载及数据库完整性检查通过，账本保持不变，迁移专项测试 10 passed。已有 Python/模型/GPU 配置仍沿用本机运行依赖。
 - 14 题得牌封存；其余起点：Dog R7，Cactus/Melanoma/Jigsaw/RANZCR R11，Taxi R15，Tabular May R12，APTOS R16。完整公共历史导入，后续轮中搜索不导入，但全部费用继承。
 - 三个只读查看页面已准备在 19170/19171/19172；控制器未启动，control=pause，没有新增 API 请求或训练。具体启动和 SSH 隧道命令见 `docs/stage2.md`。
 - 最终离线测试 87 passed、13 skipped；证据位于 `docs/evidence/20261017-stage2/`。运行环境和认证模型列表检查通过，无付费 API 调用。
 - cumulative policy 输入去掉重复的旧整树，与 replay 一致；Cactus R11 输入从 25,578,723 字节降至 340,980 字节，可见节点和可选父节点均保持 251。
 - 默认 offline baseline；新增轻量/max 配置与实际次数记录。Tabular May/RANZCR/Melanoma 定向上限 1800 秒，其余 900 秒。新候选声明 CPU/GPU、记录验证/最终训练配置，并可原子封存完整输出、缓存确定性冻结特征。
-- Cactus 新划分及两份公共 AUC 并列候选复核计划在 `/opt/mle-rsi-stage2/evidence/cactus-recheck-boundary`；未重训。独立划分复核、同代码时限配对和 offline 强度对照的实测收益仍待正式实验，不能声称已证实提升。
+- Cactus 新划分及两份公共 AUC 并列候选复核计划在 `/mnt/afs/yangsen1/experiments/lite22-stage2-001/evidence/cactus-recheck-boundary`；未重训。独立划分复核、同代码时限配对和 offline 强度对照的实测收益仍待正式实验，不能声称已证实提升。
 - 旧两笔执行 running 和一笔 API uncertain 原样保留预留；新 run 按封存 lineage 隔离历史请求，使用 stage2 请求/执行命名空间。旧费用缺失不伪造结算。
 
 ## 第一阶段整理时的授权与工作边界（历史记录）

@@ -1,0 +1,108 @@
+{
+  "created_at": 1792230732.1554737,
+  "source": "/opt/mle-rsi-stage2/runs/lite22-stage2-001",
+  "destination": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run",
+  "code_dir": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/code",
+  "frozen_before_sha256": "64691b280103f280ba04fc7075093ca0c1381d668f0d879bc7a90846cc0e5210",
+  "frozen_after_sha256": "15772a7d3d3d28dd53b5cf3bdfa4cd1209c607e97881f9a7cfaaa3b913be0e23",
+  "changed_sources": [
+    "mle_rsi/stage2.py"
+  ],
+  "campaign_configs": {
+    "dev-aerial-cactus-identification": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-aptos2019-blindness-detection": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-denoising-dirty-documents": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-detecting-insults-in-social-commentary": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-dog-breed-identification": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-dogs-vs-cats-redux-kernels-edition": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-histopathologic-cancer-detection": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-jigsaw-toxic-comment-classification-challenge": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-leaf-classification": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-mlsp-2013-birds": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-new-york-city-taxi-fare-prediction": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-nomad2018-predict-transparent-conductors": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-plant-pathology-2020-fgvc7": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-random-acts-of-pizza": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-ranzcr-clip-catheter-line-classification": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-siim-isic-melanoma-classification": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-spooky-author-identification": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-tabular-playground-series-dec-2021": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-tabular-playground-series-may-2022": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-text-normalization-challenge-english-language": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-text-normalization-challenge-russian-language": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    },
+    "dev-the-icml-2013-whale-challenge-right-whale-redux": {
+      "before": "/opt/mle-rsi-stage2/runs/lite22-stage2-001/campaigns",
+      "after": "/mnt/afs/yangsen1/experiments/lite22-stage2-001/run/campaigns"
+    }
+  },
+  "sqlite_integrity": "ok",
+  "immutable_validation_and_round_artifacts": "identical",
+  "budget_sha256": "cc8010304c36ec0fabe01a0baaabbd96e8a5db45441b56887d33ee67f23226b7",
+  "budget_preserved": true,
+  "training_started": false,
+  "controller_started": false,
+  "paid_calls": 0
+}
