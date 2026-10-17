@@ -12,7 +12,7 @@
 
 唯一后续开发仓库：`/mnt/afs/yangsen1/projects/mle-rsi-experiments`
 
-当前分支：`integration/5090-4090-handoff-20261017`。不要默认 checkout main；main 不含这次整合。
+当前分支：`bug-fix`。不要默认 checkout main；main 不含这次整合。
 
 | 项目 | 5090 主实验 | 4090 offline_max 对照探索 |
 |---|---|---|
@@ -143,4 +143,4 @@ offline没有新增奖牌；Dog Breed有局部积极信号，其他任务多持�
 
 可直接粘贴给新对话：
 
-> 请先阅读 `/mnt/afs/yangsen1/projects/mle-rsi-experiments/HANDOFF.md`，在 `integration/5090-4090-handoff-20261017` 分支工作。5090和4090最新实验路径及状态见文档。先核对已实现与待办，优先处理可靠性与恢复；不要自动启动实验、重置预算或把offline_max全开。具体实施范围按我的下一条指令。
+> 请先阅读 `/mnt/afs/yangsen1/projects/mle-rsi-experiments/HANDOFF.md`，在 `bug-fix` 分支工作。5090和4090最新实验路径及状态见文档。先核对已实现与待办，优先处理可靠性与恢复；不要自动启动实验、重置预算或把offline_max全开。具体实施范围按我的下一条指令。
