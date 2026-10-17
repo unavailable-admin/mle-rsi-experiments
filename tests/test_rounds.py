@@ -13,6 +13,31 @@ def config():
     return read(REPO/'configs/lite22-rounds-half.json')
 
 
+def test_durable_dream_skip_allows_resume_without_releasing_reservation(tmp_path):
+    from dream_rsi.storage import CampaignStore
+    from mle_rsi.rounds import unresolved
+    task = 'leaf-classification'
+    key = f'dev-{task}:dream:r0005-v0001:response:0'
+    row = dict(task=task, state='uncertain', reserved_usd=.45)
+    budget = {'api': {key: row}, 'execution': {}}
+    write(tmp_path/'budget.json', budget)
+    assert unresolved(tmp_path, task)
+    store = CampaignStore(tmp_path/'campaigns'/f'dev-{task}')
+    store.put('model_request_skip', 'dream:r0005-v0002', 'different revision')
+    assert unresolved(tmp_path, task)
+    store.put('model_request_skip', 'dream:r0005-v0001', 'Explicitly skipped after timeout')
+    assert not unresolved(tmp_path, task)
+    assert read(tmp_path/'budget.json') == budget
+    row['state'] = 'pending'
+    write(tmp_path/'budget.json', budget)
+    assert unresolved(tmp_path, task)
+    row['state'] = 'uncertain'
+    budget['execution']['job'] = dict(task=task, state='running')
+    write(tmp_path/'budget.json', budget)
+    assert unresolved(tmp_path, task)
+    store.close()
+
+
 def test_half_machine_config_and_no_fixed_search_target():
     s = config()
     assert len(validate(s)) == 22

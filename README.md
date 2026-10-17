@@ -1,10 +1,12 @@
 # Dream-RSI × MLE-bench
 
+**2026-10-17 最新交接入口：[HANDOFF.md](HANDOFF.md)。后续统一在本仓库的 `integration/5090-4090-handoff-20261017` 分支开发；两个实验当前均为停止状态，待办不等于已实施。**
+
 混合调度、获牌退出、跨机器安装和手动切换入口见 [新调度说明](docs/mixed-scheduling-medal-retirement.md)。
 
 总目标：在 MLE-bench 上超过 HMA、达到 SOTA；短期目标：Lite22 SOTA。当前准备的新入口是[半机 Lite22 连续逐轮实验](docs/lite22-rounds.md)，带网页暂停/继续、跨题共享资源和每轮成绩。
 
-主仓库的 `main` 是统一开发入口，包含 guarded Lite22 和 Spooky 单题累计搜索。历史实验由 tag 固定；不要用 main 的新代码覆盖正在运行的冻结副本。
+主仓库的 `main` 保留原发布版本；当前整合开发入口以本页顶部交接文档为准。历史实验由 tag 固定；不要用 main 的新代码覆盖正在运行的冻结副本。
 
 | 版本 | 用途 |
 |---|---|

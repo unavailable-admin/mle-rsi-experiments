@@ -72,6 +72,62 @@ def status(root, task, state, **extra):
     write(root/'task-status'/f'{task}.json', {'task': task, 'state': state, 'updated_at': time.time(), **extra})
 
 
+def round_slot_evidence(store, number):
+    """Count committed nodes plus explicitly unrevealed attempted slots.
+
+    Never invent search nodes or replay outcomes for interrupted expansions.
+    Require all five full batch decisions and every attempt to be durable.
+    """
+    from collections import Counter
+    from dream_rsi.tree import DiscoveryTree
+    attempts = dict(store.list('attempt'))
+    interrupted = []
+    expected_nodes = 0
+    for round_number in range(1, number + 1):
+        tree_id = f'tree-{round_number:04d}'
+        payload = store.get('tree', tree_id)
+        if payload is None:
+            raise RuntimeError('Missing round tree: ' + tree_id)
+        tree = DiscoveryTree.from_payload(payload)
+        if len(tree.rounds) != 5:
+            raise RuntimeError('Incomplete batch decisions: ' + tree_id)
+        created = tree.nodes[tree.initial_node_count:]
+        committed = {node.attempt.attempt_id for node in created}
+        expected_ids = {f'{tree_id}:r{i}:a{j}' for i in range(5) for j in range(5)}
+        actual_ids = {key for key in attempts if key.startswith(tree_id + ':')}
+        if actual_ids != expected_ids or not committed <= expected_ids:
+            raise RuntimeError('Incomplete or unexpected attempts: ' + tree_id)
+        public_ids = {node.node_id: ('r' if index == 0 else f'n{index}') for index, node in enumerate(tree.nodes)}
+        for index, step in enumerate(tree.rounds):
+            if step.round_index != index or len(step.parent_ids) != 5:
+                raise RuntimeError('Incomplete batch decision: ' + tree_id)
+            missing_parents = []
+            completed_count = 0
+            for position in range(5):
+                ident = f'{tree_id}:r{index}:a{position}'
+                attempt = attempts[ident]
+                if public_ids.get(attempt.parent_id) != step.parent_ids[position]:
+                    raise RuntimeError('Attempt parent disagrees with decision: ' + ident)
+                if ident in committed:
+                    if attempt.lifecycle not in ('completed', 'committed') or not attempt.evaluation_ref:
+                        raise RuntimeError('Committed attempt incomplete: ' + ident)
+                    completed_count += 1
+                else:
+                    if attempt.lifecycle in ('completed', 'committed'):
+                        raise RuntimeError('Uncommitted completed attempt: ' + ident)
+                    missing_parents.append(step.parent_ids[position])
+                    interrupted.append({'attempt_id': ident, 'lifecycle': attempt.lifecycle,
+                                        'reason': 'Expansion interrupted before a node was committed'})
+            if (Counter(missing_parents) != Counter(step.missing_parent_ids)
+                    or completed_count != len(step.revealed_ids)):
+                raise RuntimeError('Interrupted slots disagree with replay evidence: ' + tree_id)
+        expected_nodes += len(created)
+    if len(store.list('node')) != expected_nodes or expected_nodes + len(interrupted) != number * 25:
+        raise RuntimeError('Candidate and interrupted slot accounting mismatch')
+    return {'candidate_slots': number * 25, 'materialized_candidates': expected_nodes,
+            'interrupted_slots': interrupted}
+
+
 def export_round(root, task, store, number):
     out = root/'rounds'/f'{number:04d}'/task
     seal = out/'seal.json'
@@ -106,7 +162,7 @@ def export_round(root, task, store, number):
                   'diagnostics': diagnostics, 'source_hash': node.artifact.source_hash,
                   'selection_basis': 'host public validation only', 'selected_at': time.time()}
     write(out/'selected.json', choice)
-    write(seal, {'round': number, 'candidate_slots': number*25, 'private_used_for_selection': False,
+    write(seal, {'round': number, **round_slot_evidence(store, number), 'private_used_for_selection': False,
                  'artifacts': {p.name: sha(p) for p in out.iterdir() if p.name in ('solver.py','submission.csv','selected.json')}})
     return out
 
@@ -121,8 +177,35 @@ def unresolved(root, task):
     if not (root/'budget.json').exists():
         return False
     b = read(root/'budget.json')
-    return any(v['task'] == task and v['state'] in ('pending', 'running', 'uncertain')
-               for section in ('api','execution') for v in b[section].values())
+    pending = [(section, key, v) for section in ('api', 'execution')
+               for key, v in b[section].items()
+               if v['task'] == task and v['state'] in ('pending', 'running', 'uncertain')]
+    if not pending:
+        return False
+    # A durable dream skip prevents resending that revision. Its uncertain bill
+    # remains fully reserved; it need not block unrelated subsequent work.
+    from dream_rsi.storage import CampaignStore
+    store = None
+    try:
+        for section, key, row in pending:
+            prefix = f'dev-{task}:'
+            if section != 'api' or row['state'] != 'uncertain' or not key.startswith(prefix+'dream:'):
+                return True
+            request = key[len(prefix):]
+            revision, separator, response = request.partition(':response:')
+            if not separator or not response.isdigit():
+                return True
+            if store is None:
+                directory = root/'campaigns'/f'dev-{task}'
+                if not (directory/'campaign.sqlite').exists():
+                    return True
+                store = CampaignStore(directory, read_only=True)
+            if not store.get('model_request_skip', revision):
+                return True
+        return False
+    finally:
+        if store is not None:
+            store.close()
 
 
 async def run(root, through_round=None):
@@ -193,9 +276,7 @@ async def run(root, through_round=None):
                     status(root, task, 'searching', round=number)
                     print(f'ROUND {number} START {task}', flush=True)
                     await c.run_round(number)
-                    expected = number * 25
-                    if len(c.store.list('node')) != expected:
-                        raise RuntimeError(f'Incomplete round: expected {expected} candidate slots')
+                    round_slot_evidence(c.store, number)
                     await grade_checkpoint(task, number)
                 status(root, task, 'round_complete', round=number)
                 print(f'ROUND {number} COMPLETE {task}', flush=True)

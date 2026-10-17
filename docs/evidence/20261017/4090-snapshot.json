@@ -1,0 +1,773 @@
+{
+  "run_dir": "/mnt/afs/yangsen1/runs/dream-rsi-offline-max-001",
+  "status": {
+    "state": "stopped",
+    "updated_at": 1792224065.3218849,
+    "blocked": {
+      "jigsaw-toxic-comment-classification-challenge": "PolicyError: Policy failed while receiving view",
+      "new-york-city-taxi-fare-prediction": "ExternalUnknown: Provider outcome uncertain for tree-0006:r0:a0:response:0: RemoteProtocolError; inspect saved evidence before retry",
+      "siim-isic-melanoma-classification": "PolicyError: Policy failed while receiving view",
+      "dog-breed-identification": "ContextOverflow: Evidence discovery input needs 158574 tokens; budget 150000; not truncated",
+      "ranzcr-clip-catheter-line-classification": "PolicyError: Policy failed while receiving view"
+    }
+  },
+  "control": {
+    "action": "stop",
+    "requested_at": 1792223707.6515954
+  },
+  "tasks": {
+    "aerial-cactus-identification": {
+      "task": "aerial-cactus-identification",
+      "state": "paused",
+      "updated_at": 1792223807.4747887,
+      "round": 11
+    },
+    "aptos2019-blindness-detection": {
+      "task": "aptos2019-blindness-detection",
+      "state": "paused",
+      "updated_at": 1792223766.0946429,
+      "round": 11
+    },
+    "denoising-dirty-documents": {
+      "task": "denoising-dirty-documents",
+      "state": "retired_medal",
+      "updated_at": 1792222384.1662111,
+      "round": 1
+    },
+    "detecting-insults-in-social-commentary": {
+      "task": "detecting-insults-in-social-commentary",
+      "state": "retired_medal",
+      "updated_at": 1792222384.1787114,
+      "round": 1
+    },
+    "dog-breed-identification": {
+      "task": "dog-breed-identification",
+      "state": "blocked",
+      "updated_at": 1792186769.164603,
+      "round": 7,
+      "reason": "ContextOverflow: Evidence discovery input needs 158574 tokens; budget 150000; not truncated"
+    },
+    "dogs-vs-cats-redux-kernels-edition": {
+      "task": "dogs-vs-cats-redux-kernels-edition",
+      "state": "retired_medal",
+      "updated_at": 1792222384.1898398,
+      "round": 1
+    },
+    "histopathologic-cancer-detection": {
+      "task": "histopathologic-cancer-detection",
+      "state": "retired_medal",
+      "updated_at": 1792222384.200955,
+      "round": 1
+    },
+    "jigsaw-toxic-comment-classification-challenge": {
+      "task": "jigsaw-toxic-comment-classification-challenge",
+      "state": "blocked",
+      "updated_at": 1792174698.4016068,
+      "round": 6,
+      "reason": "PolicyError: Policy failed while receiving view"
+    },
+    "leaf-classification": {
+      "task": "leaf-classification",
+      "state": "retired_medal",
+      "updated_at": 1792222384.211813,
+      "round": 2
+    },
+    "mlsp-2013-birds": {
+      "task": "mlsp-2013-birds",
+      "state": "retired_medal",
+      "updated_at": 1792222384.2231004,
+      "round": 1
+    },
+    "new-york-city-taxi-fare-prediction": {
+      "task": "new-york-city-taxi-fare-prediction",
+      "state": "blocked",
+      "updated_at": 1792174729.8791082,
+      "round": 6,
+      "reason": "ExternalUnknown: Provider outcome uncertain for tree-0006:r0:a0:response:0: RemoteProtocolError; inspect saved evidence before retry"
+    },
+    "nomad2018-predict-transparent-conductors": {
+      "task": "nomad2018-predict-transparent-conductors",
+      "state": "retired_medal",
+      "updated_at": 1792222384.2344496,
+      "round": 1
+    },
+    "plant-pathology-2020-fgvc7": {
+      "task": "plant-pathology-2020-fgvc7",
+      "state": "retired_medal",
+      "updated_at": 1792222384.2472658,
+      "round": 4
+    },
+    "random-acts-of-pizza": {
+      "task": "random-acts-of-pizza",
+      "state": "retired_medal",
+      "updated_at": 1792222384.2581542,
+      "round": 1
+    },
+    "ranzcr-clip-catheter-line-classification": {
+      "task": "ranzcr-clip-catheter-line-classification",
+      "state": "blocked",
+      "updated_at": 1792197443.4530065,
+      "round": 8,
+      "reason": "PolicyError: Policy failed while receiving view"
+    },
+    "siim-isic-melanoma-classification": {
+      "task": "siim-isic-melanoma-classification",
+      "state": "blocked",
+      "updated_at": 1792181601.8699157,
+      "round": 6,
+      "reason": "PolicyError: Policy failed while receiving view"
+    },
+    "spooky-author-identification": {
+      "task": "spooky-author-identification",
+      "state": "retired_medal",
+      "updated_at": 1792222384.26972,
+      "round": 2
+    },
+    "tabular-playground-series-dec-2021": {
+      "task": "tabular-playground-series-dec-2021",
+      "state": "retired_medal",
+      "updated_at": 1792222384.281237,
+      "round": 1
+    },
+    "tabular-playground-series-may-2022": {
+      "task": "tabular-playground-series-may-2022",
+      "state": "paused",
+      "updated_at": 1792224065.211729,
+      "round": 11
+    },
+    "text-normalization-challenge-english-language": {
+      "task": "text-normalization-challenge-english-language",
+      "state": "retired_medal",
+      "updated_at": 1792222384.293009,
+      "round": 1
+    },
+    "text-normalization-challenge-russian-language": {
+      "task": "text-normalization-challenge-russian-language",
+      "state": "retired_medal",
+      "updated_at": 1792222384.3032064,
+      "round": 1
+    },
+    "the-icml-2013-whale-challenge-right-whale-redux": {
+      "task": "the-icml-2013-whale-challenge-right-whale-redux",
+      "state": "retired_medal",
+      "updated_at": 1792222384.3140543,
+      "round": 1
+    }
+  },
+  "scores": {
+    "aerial-cactus-identification": [
+      {
+        "round": 1,
+        "score": 0.99999,
+        "medal": false
+      },
+      {
+        "round": 2,
+        "score": 0.99999,
+        "medal": false
+      },
+      {
+        "round": 3,
+        "score": 0.99999,
+        "medal": false
+      },
+      {
+        "round": 4,
+        "score": 0.99999,
+        "medal": false
+      },
+      {
+        "round": 5,
+        "score": 0.99999,
+        "medal": false
+      },
+      {
+        "round": 6,
+        "score": 0.99999,
+        "medal": false
+      },
+      {
+        "round": 7,
+        "score": 0.99999,
+        "medal": false
+      },
+      {
+        "round": 8,
+        "score": 0.99999,
+        "medal": false
+      },
+      {
+        "round": 9,
+        "score": 0.99999,
+        "medal": false
+      },
+      {
+        "round": 10,
+        "score": 0.99999,
+        "medal": false
+      }
+    ],
+    "aptos2019-blindness-detection": [
+      {
+        "round": 1,
+        "score": 0.88888,
+        "medal": false
+      },
+      {
+        "round": 2,
+        "score": 0.9062,
+        "medal": false
+      },
+      {
+        "round": 3,
+        "score": 0.9062,
+        "medal": false
+      },
+      {
+        "round": 4,
+        "score": 0.9062,
+        "medal": false
+      },
+      {
+        "round": 5,
+        "score": 0.9062,
+        "medal": false
+      },
+      {
+        "round": 6,
+        "score": 0.9062,
+        "medal": false
+      },
+      {
+        "round": 7,
+        "score": 0.9062,
+        "medal": false
+      },
+      {
+        "round": 8,
+        "score": 0.9062,
+        "medal": false
+      },
+      {
+        "round": 9,
+        "score": 0.9062,
+        "medal": false
+      },
+      {
+        "round": 10,
+        "score": 0.9062,
+        "medal": false
+      }
+    ],
+    "denoising-dirty-documents": [
+      {
+        "round": 1,
+        "score": 0.01482,
+        "medal": true
+      },
+      {
+        "round": 2,
+        "score": 0.0132,
+        "medal": true
+      },
+      {
+        "round": 3,
+        "score": 0.01207,
+        "medal": true
+      },
+      {
+        "round": 4,
+        "score": 0.01082,
+        "medal": true
+      }
+    ],
+    "detecting-insults-in-social-commentary": [
+      {
+        "round": 1,
+        "score": 0.94081,
+        "medal": true
+      },
+      {
+        "round": 2,
+        "score": 0.94055,
+        "medal": true
+      },
+      {
+        "round": 3,
+        "score": 0.9397,
+        "medal": true
+      },
+      {
+        "round": 4,
+        "score": 0.94019,
+        "medal": true
+      }
+    ],
+    "dog-breed-identification": [
+      {
+        "round": 1,
+        "score": 0.39486,
+        "medal": false
+      },
+      {
+        "round": 2,
+        "score": 0.36436,
+        "medal": false
+      },
+      {
+        "round": 3,
+        "score": 0.32073,
+        "medal": false
+      },
+      {
+        "round": 4,
+        "score": 0.31976,
+        "medal": false
+      },
+      {
+        "round": 5,
+        "score": 0.30137,
+        "medal": false
+      },
+      {
+        "round": 6,
+        "score": 0.30137,
+        "medal": false
+      }
+    ],
+    "dogs-vs-cats-redux-kernels-edition": [
+      {
+        "round": 1,
+        "score": 0.00226,
+        "medal": true
+      },
+      {
+        "round": 2,
+        "score": 0.00166,
+        "medal": true
+      },
+      {
+        "round": 3,
+        "score": 0.0017,
+        "medal": true
+      },
+      {
+        "round": 4,
+        "score": 0.00183,
+        "medal": true
+      }
+    ],
+    "histopathologic-cancer-detection": [
+      {
+        "round": 1,
+        "score": 0.99632,
+        "medal": true
+      },
+      {
+        "round": 2,
+        "score": 0.99716,
+        "medal": true
+      },
+      {
+        "round": 3,
+        "score": 0.99785,
+        "medal": true
+      },
+      {
+        "round": 4,
+        "score": 0.99784,
+        "medal": true
+      }
+    ],
+    "jigsaw-toxic-comment-classification-challenge": [
+      {
+        "round": 1,
+        "score": 0.98126,
+        "medal": false
+      },
+      {
+        "round": 2,
+        "score": 0.98195,
+        "medal": false
+      },
+      {
+        "round": 3,
+        "score": 0.98213,
+        "medal": false
+      },
+      {
+        "round": 4,
+        "score": 0.98217,
+        "medal": false
+      },
+      {
+        "round": 5,
+        "score": 0.98222,
+        "medal": false
+      }
+    ],
+    "leaf-classification": [
+      {
+        "round": 1,
+        "score": 0.02483,
+        "medal": false
+      },
+      {
+        "round": 2,
+        "score": 0.01261,
+        "medal": true
+      },
+      {
+        "round": 3,
+        "score": 0.01261,
+        "medal": true
+      },
+      {
+        "round": 4,
+        "score": 0.01261,
+        "medal": true
+      }
+    ],
+    "mlsp-2013-birds": [
+      {
+        "round": 1,
+        "score": 0.88067,
+        "medal": true
+      },
+      {
+        "round": 2,
+        "score": 0.90688,
+        "medal": true
+      },
+      {
+        "round": 3,
+        "score": 0.90143,
+        "medal": true
+      },
+      {
+        "round": 4,
+        "score": 0.90302,
+        "medal": true
+      }
+    ],
+    "new-york-city-taxi-fare-prediction": [
+      {
+        "round": 1,
+        "score": 4.01562,
+        "medal": false
+      },
+      {
+        "round": 2,
+        "score": 4.01562,
+        "medal": false
+      },
+      {
+        "round": 3,
+        "score": 4.008,
+        "medal": false
+      },
+      {
+        "round": 4,
+        "score": 4.00357,
+        "medal": false
+      },
+      {
+        "round": 5,
+        "score": 4.02074,
+        "medal": false
+      }
+    ],
+    "nomad2018-predict-transparent-conductors": [
+      {
+        "round": 1,
+        "score": 0.06055,
+        "medal": true
+      },
+      {
+        "round": 2,
+        "score": 0.05943,
+        "medal": true
+      },
+      {
+        "round": 3,
+        "score": 0.05939,
+        "medal": true
+      },
+      {
+        "round": 4,
+        "score": 0.05974,
+        "medal": true
+      }
+    ],
+    "plant-pathology-2020-fgvc7": [
+      {
+        "round": 1,
+        "score": 0.96361,
+        "medal": false
+      },
+      {
+        "round": 2,
+        "score": 0.96535,
+        "medal": false
+      },
+      {
+        "round": 3,
+        "score": 0.96959,
+        "medal": false
+      },
+      {
+        "round": 4,
+        "score": 0.98249,
+        "medal": true
+      }
+    ],
+    "random-acts-of-pizza": [
+      {
+        "round": 1,
+        "score": 0.78668,
+        "medal": true
+      },
+      {
+        "round": 2,
+        "score": 0.78985,
+        "medal": true
+      },
+      {
+        "round": 3,
+        "score": 0.78823,
+        "medal": true
+      },
+      {
+        "round": 4,
+        "score": 0.79421,
+        "medal": true
+      }
+    ],
+    "ranzcr-clip-catheter-line-classification": [
+      {
+        "round": 1,
+        "score": 0.91861,
+        "medal": false
+      },
+      {
+        "round": 2,
+        "score": 0.92543,
+        "medal": false
+      },
+      {
+        "round": 3,
+        "score": 0.93356,
+        "medal": false
+      },
+      {
+        "round": 4,
+        "score": 0.93447,
+        "medal": false
+      },
+      {
+        "round": 5,
+        "score": 0.93447,
+        "medal": false
+      },
+      {
+        "round": 6,
+        "score": 0.93447,
+        "medal": false
+      },
+      {
+        "round": 7,
+        "score": 0.93447,
+        "medal": false
+      }
+    ],
+    "siim-isic-melanoma-classification": [
+      {
+        "round": 1,
+        "score": 0.88125,
+        "medal": false
+      },
+      {
+        "round": 2,
+        "score": 0.88513,
+        "medal": false
+      },
+      {
+        "round": 3,
+        "score": 0.88981,
+        "medal": false
+      },
+      {
+        "round": 4,
+        "score": 0.88553,
+        "medal": false
+      },
+      {
+        "round": 5,
+        "score": 0.88553,
+        "medal": false
+      }
+    ],
+    "spooky-author-identification": [
+      {
+        "round": 1,
+        "score": 0.30817,
+        "medal": false
+      },
+      {
+        "round": 2,
+        "score": 0.2923,
+        "medal": true
+      },
+      {
+        "round": 3,
+        "score": 0.27075,
+        "medal": true
+      },
+      {
+        "round": 4,
+        "score": 0.27794,
+        "medal": true
+      }
+    ],
+    "tabular-playground-series-dec-2021": [
+      {
+        "round": 1,
+        "score": 0.96201,
+        "medal": true
+      },
+      {
+        "round": 2,
+        "score": 0.96237,
+        "medal": true
+      },
+      {
+        "round": 3,
+        "score": 0.96244,
+        "medal": true
+      },
+      {
+        "round": 4,
+        "score": 0.96298,
+        "medal": true
+      }
+    ],
+    "tabular-playground-series-may-2022": [
+      {
+        "round": 1,
+        "score": 0.99424,
+        "medal": false
+      },
+      {
+        "round": 2,
+        "score": 0.99545,
+        "medal": false
+      },
+      {
+        "round": 3,
+        "score": 0.99551,
+        "medal": false
+      },
+      {
+        "round": 4,
+        "score": 0.99571,
+        "medal": false
+      },
+      {
+        "round": 5,
+        "score": 0.99578,
+        "medal": false
+      },
+      {
+        "round": 6,
+        "score": 0.99586,
+        "medal": false
+      },
+      {
+        "round": 7,
+        "score": 0.9958,
+        "medal": false
+      },
+      {
+        "round": 8,
+        "score": 0.9958,
+        "medal": false
+      },
+      {
+        "round": 9,
+        "score": 0.99584,
+        "medal": false
+      },
+      {
+        "round": 10,
+        "score": 0.99584,
+        "medal": false
+      }
+    ],
+    "text-normalization-challenge-english-language": [
+      {
+        "round": 1,
+        "score": 0.99219,
+        "medal": true
+      },
+      {
+        "round": 2,
+        "score": 0.9927,
+        "medal": true
+      },
+      {
+        "round": 3,
+        "score": 0.9927,
+        "medal": true
+      },
+      {
+        "round": 4,
+        "score": 0.99308,
+        "medal": true
+      }
+    ],
+    "text-normalization-challenge-russian-language": [
+      {
+        "round": 1,
+        "score": 0.97805,
+        "medal": true
+      },
+      {
+        "round": 2,
+        "score": 0.97806,
+        "medal": true
+      },
+      {
+        "round": 3,
+        "score": 0.97805,
+        "medal": true
+      },
+      {
+        "round": 4,
+        "score": 0.98192,
+        "medal": true
+      }
+    ],
+    "the-icml-2013-whale-challenge-right-whale-redux": [
+      {
+        "round": 1,
+        "score": 0.99146,
+        "medal": true
+      },
+      {
+        "round": 2,
+        "score": 0.9933,
+        "medal": true
+      },
+      {
+        "round": 3,
+        "score": 0.99392,
+        "medal": true
+      },
+      {
+        "round": 4,
+        "score": 0.99392,
+        "medal": true
+      }
+    ]
+  }
+}

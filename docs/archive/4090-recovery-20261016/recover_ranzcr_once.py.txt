@@ -1,0 +1,86 @@
+"""Audited one-time recovery of the October 16 offline-max dream timeout."""
+import hashlib
+import sqlite3
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from mle_rsi import REPO
+from mle_rsi.common import lock, read, write
+from mle_rsi.experiment import source_manifest, frozen
+from mle_rsi.rounds import unresolved, status, control
+from dream_rsi.storage import CampaignStore
+
+root = Path('/mnt/afs/yangsen1/runs/dream-rsi-offline-max-001')
+task = 'ranzcr-clip-catheter-line-classification'
+revision = 'dream:r0005-v0001'
+request = revision + ':response:0'
+ident = f'dev-{task}:{request}'
+print('Waiting for graceful controller shutdown', flush=True)
+with lock(root/'controller'):
+    assert read(root/'control.json')['action'] == 'stop'
+    before = read(root/'frozen-config.json')
+    assert source_manifest() == before['source_hashes']
+    # Apply only after the old controller exits: grading verifies source hashes.
+    patched = (REPO/'scripts/rounds-timeout-recovery.py.staged').read_text()
+    (REPO/'mle_rsi/rounds.py').write_text(patched)
+    import importlib
+    import mle_rsi.rounds as rounds_module
+    unresolved = importlib.reload(rounds_module).unresolved
+    current = source_manifest()
+    changed = {p for p in set(current) | set(before['source_hashes'])
+               if current.get(p) != before['source_hashes'].get(p)}
+    assert changed == {'mle_rsi/rounds.py'}, changed
+    ledger = read(root/'budget.json')
+    row = ledger['api'][ident]
+    assert row['state'] == 'uncertain' and 'charged_usd' not in row
+    assert not any(v['state'] == 'running' for v in ledger['execution'].values())
+    assert not any(v['state'] in ('pending', 'running') for v in ledger['api'].values())
+    directory = root/'api'/f'dev-{task}'/hashlib.sha256(request.encode()).hexdigest()[:24]
+    assert {p.name for p in directory.iterdir()} == {'request.json'}
+    archive = root/'interventions'/'ranzcr-r0005-timeout-skip'
+    archive.mkdir(parents=True, exist_ok=False)
+    write(archive/'frozen-config-before.json', before)
+    write(archive/'budget-before.json', ledger)
+    write(archive/'task-status-before.json', read(root/'task-status'/f'{task}.json'))
+    store = CampaignStore(root/'campaigns'/f'dev-{task}')
+    try:
+        with store.writer():
+            cp = store.get('checkpoint', 'active')
+            assert cp['phase'] == 'DREAMING' and cp['completed_rounds'] == 4
+            assert len(store.list('node')) == 125
+            assert store.get('response', request) is None
+            assert store.get('model_request_skip', revision) is None
+            with sqlite3.connect(archive/'campaign-before.sqlite') as backup:
+                store.connection.backup(backup)
+            reason = ('Explicit recovery: skip revision after ReadTimeout; no durable response; '
+                      'do not resend; uncertain API reservation retained in full.')
+            store.put('model_request_skip', revision, reason)
+            assert len(store.list('node')) == 125
+            assert store.get('checkpoint', 'active') == cp
+    finally:
+        store.close()
+    assert not unresolved(root, task)
+    assert read(root/'budget.json') == ledger
+    for name in before['spec']['experiment_tasks']:
+        assert not unresolved(root, name), name
+    after = dict(before, source_hashes=current)
+    after['migrations'] = before.get('migrations', []) + [{
+        'at': time.time(), 'change': 'Allow durable skipped dream requests to retain uncertain billing without blocking continuation',
+        'changed_sources': sorted(changed), 'evidence': str(archive)}]
+    write(root/'frozen-config.json', after)
+    frozen(root)
+    status(root, task, 'ready', recovery=str(archive))
+    write(archive/'recovery.json', {'at': time.time(), 'request': request,
+          'action': 'skip_one_revision', 'candidate_count': 125,
+          'budget_unchanged': True, 'request_replayed': False,
+          'old_source_hash': before['source_hashes']['mle_rsi/rounds.py'],
+          'new_source_hash': current['mle_rsi/rounds.py']})
+    control(root, 'resume')
+with (root/'controller.log').open('ab') as output:
+    child = subprocess.Popen([sys.executable, '-u', '-m', 'mle_rsi.rounds', 'run', '--run-dir', str(root)],
+                             cwd=REPO, stdin=subprocess.DEVNULL, stdout=output,
+                             stderr=subprocess.STDOUT, start_new_session=True)
+print(f'Recovery applied; controller launched PID {child.pid}', flush=True)

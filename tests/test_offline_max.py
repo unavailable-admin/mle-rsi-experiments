@@ -135,6 +135,12 @@ async def test_inherited_winning_submission_uses_sealed_copy_on_new_host(tmp_pat
     from dataclasses import replace
     from mle_rsi.rounds import export_round
     s=config();root=tmp_path/'run';initialize(root,s,'mock');await run(root,through_round=1)
+    # Export now verifies durable attempts and batch decisions for every round.
+    # Build a real mock second round rather than only fabricating round_best.
+    await run(root,through_round=2)
+    # Re-export this test's second round using the inherited first-round winner.
+    import shutil
+    shutil.rmtree(root/'rounds/0002')
     submission=root/'rounds/0001/leaf-classification/submission.csv'
     submission.write_text('id,prediction\n1,0.5\n')
     with opened(root/'campaigns/dev-leaf-classification',False) as store:

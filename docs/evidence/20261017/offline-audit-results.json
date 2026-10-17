@@ -1,0 +1,907 @@
+{
+  "scope": "5090 rounds 1-4, existing public predictions only; no training or private rescoring",
+  "cactus": {
+    "tied": 53,
+    "unique_validation": 43,
+    "unique_submission": 43,
+    "first": {
+      "node": "tree-0001:n1",
+      "auc": 1.0,
+      "logloss": 0.0013237235250494334,
+      "margin": 0.20872839999999993,
+      "validation_hash": "6472ce11bd8521f9e8d3272edf406d840fb5dff6a5ae70c1652630ab730c98c2",
+      "submission_hash": "33d2256cf9904f8e209359ef3e6d69b8f9a70bd67af813ca89d856d6d58c5e55"
+    },
+    "min_logloss": {
+      "node": "tree-0001:n21",
+      "auc": 1.0,
+      "logloss": 8.84302072667697e-05,
+      "margin": 0.926690032,
+      "validation_hash": "fc2362760f5e6f53f77a1a464221d7278ea77d96153b5ec8e8f212626def9e3a",
+      "submission_hash": "ccf6dd2d5cd84cdd1eda2b58a4bd0ef948f7c21b11e247beaf15bf8efd2bb1ab"
+    },
+    "max_logloss": {
+      "node": "tree-0001:n10",
+      "auc": 1.0,
+      "logloss": 0.044293561414840456,
+      "margin": 0.06981148076905658,
+      "validation_hash": "63fb0c8a0cad8a1333c4e10e0c914eb6d379377c25d637e1442140fe678f2294",
+      "submission_hash": "952c612f08292052d3bbe272a41ac08cafe5e393c066a0dfdd71c0c28950e3ff"
+    },
+    "positive": 2126,
+    "negative": 709,
+    "mean_prediction_range": 0.044024408384589486
+  },
+  "melanoma": {
+    "patient_overlap": 0,
+    "train_rows": 23402,
+    "validation_rows": 5582,
+    "train_positive": 410,
+    "validation_positive": 103,
+    "validation_patients": 412,
+    "paired_patient_bootstrap_replicates": 400,
+    "delta_auc": 0.004421117169350897,
+    "delta_auc_percentile95": [
+      -0.003090440075035597,
+      0.011497310223260039
+    ],
+    "warning": "same searched validation set; bootstrap does not establish independent generalization",
+    "selected": [
+      {
+        "round": 3,
+        "node": "tree-0003:n72",
+        "auc": 0.9044453934439882,
+        "events": [
+          {
+            "budget": {
+              "cpu_cores": 8,
+              "gpu_count": 1,
+              "memory_gib": 32,
+              "wall_seconds": 900
+            },
+            "elapsed_seconds": 0.025,
+            "stage": "preflight",
+            "validation_metric": "auc-roc"
+          },
+          {
+            "checkpoint": "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+            "device": "cuda",
+            "elapsed_seconds": 6.855,
+            "fallback_reason": null,
+            "name": "resnet50",
+            "stage": "model"
+          },
+          {
+            "checkpoint": "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+            "device": "cuda:0",
+            "elapsed_seconds": 6.859,
+            "fallback_reason": null,
+            "name": "resnet50_appearance_metadata_prototype_patient_context_rank_blend",
+            "stage": "model"
+          },
+          {
+            "elapsed_seconds": 7.131,
+            "rows": 33126,
+            "stage": "image_features",
+            "wall_seconds": 900
+          },
+          {
+            "elapsed_seconds": 635.472,
+            "rows": 33126,
+            "stage": "patient_context"
+          },
+          {
+            "elapsed_seconds": 644.186,
+            "rows": 23402,
+            "stage": "fit_validation"
+          },
+          {
+            "elapsed_seconds": 728.279,
+            "model": "resnet50_appearance_metadata_prototype_patient_context_rank_blend",
+            "stage": "validation_output"
+          },
+          {
+            "elapsed_seconds": 728.28,
+            "remaining_seconds": 126.72027662198525,
+            "rows": 28984,
+            "stage": "fit_test"
+          },
+          {
+            "elapsed_seconds": 769.923,
+            "stage": "completed"
+          }
+        ]
+      },
+      {
+        "round": 4,
+        "node": "tree-0004:n97",
+        "auc": 0.9088665106133391,
+        "events": [
+          {
+            "budget": {
+              "cpu_cores": 8,
+              "gpu_count": 1,
+              "memory_gib": 32,
+              "wall_seconds": 900
+            },
+            "elapsed_seconds": 0.022,
+            "stage": "preflight",
+            "validation_metric": "auc-roc"
+          },
+          {
+            "checkpoint": "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+            "device": "cuda",
+            "elapsed_seconds": 6.697,
+            "fallback_reason": null,
+            "name": "resnet50",
+            "stage": "model"
+          },
+          {
+            "checkpoint": "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+            "device": "cuda:0",
+            "elapsed_seconds": 6.701,
+            "fallback_reason": null,
+            "name": "resnet50_appearance_patient_relative_rank_blend_catboost_90_lgb_10",
+            "stage": "model"
+          },
+          {
+            "elapsed_seconds": 6.967,
+            "rows": 33126,
+            "stage": "image_features",
+            "wall_seconds": 900
+          },
+          {
+            "elapsed_seconds": 641.477,
+            "rows": 33126,
+            "stage": "patient_context"
+          },
+          {
+            "elapsed_seconds": 650.278,
+            "rows": 23402,
+            "stage": "fit_validation"
+          },
+          {
+            "elapsed_seconds": 736.522,
+            "model": "resnet50_appearance_patient_relative_rank_blend_catboost_90_lgb_10",
+            "stage": "validation_output"
+          },
+          {
+            "elapsed_seconds": 736.523,
+            "remaining_seconds": 118.47669824305922,
+            "rows": 28984,
+            "stage": "fit_test"
+          },
+          {
+            "elapsed_seconds": 777.662,
+            "stage": "completed"
+          }
+        ]
+      }
+    ]
+  },
+  "cost": [
+    {
+      "task": "aerial-cactus-identification",
+      "timeouts": 0,
+      "historical_execution_hours": 1.143608233226599,
+      "extra_hours_for_same_timeouts_900_to_1800": 0.0,
+      "percent_extra_vs_historical": 0.0,
+      "extra_minutes_per25_at_historical_rate": 0.0
+    },
+    {
+      "task": "aptos2019-blindness-detection",
+      "timeouts": 0,
+      "historical_execution_hours": 3.434934306288649,
+      "extra_hours_for_same_timeouts_900_to_1800": 0.0,
+      "percent_extra_vs_historical": 0.0,
+      "extra_minutes_per25_at_historical_rate": 0.0
+    },
+    {
+      "task": "dog-breed-identification",
+      "timeouts": 1,
+      "historical_execution_hours": 3.2174048696133024,
+      "extra_hours_for_same_timeouts_900_to_1800": 0.25,
+      "percent_extra_vs_historical": 7.770237509152751,
+      "extra_minutes_per25_at_historical_rate": 3.75
+    },
+    {
+      "task": "jigsaw-toxic-comment-classification-challenge",
+      "timeouts": 2,
+      "historical_execution_hours": 14.812899001900352,
+      "extra_hours_for_same_timeouts_900_to_1800": 0.5,
+      "percent_extra_vs_historical": 3.3754365025769424,
+      "extra_minutes_per25_at_historical_rate": 7.5
+    },
+    {
+      "task": "new-york-city-taxi-fare-prediction",
+      "timeouts": 1,
+      "historical_execution_hours": 3.511872518197213,
+      "extra_hours_for_same_timeouts_900_to_1800": 0.25,
+      "percent_extra_vs_historical": 7.118709426512303,
+      "extra_minutes_per25_at_historical_rate": 3.75
+    },
+    {
+      "task": "ranzcr-clip-catheter-line-classification",
+      "timeouts": 4,
+      "historical_execution_hours": 14.97896490315593,
+      "extra_hours_for_same_timeouts_900_to_1800": 1.0,
+      "percent_extra_vs_historical": 6.676028727387625,
+      "extra_minutes_per25_at_historical_rate": 15.0
+    },
+    {
+      "task": "siim-isic-melanoma-classification",
+      "timeouts": 11,
+      "historical_execution_hours": 20.73237576346977,
+      "extra_hours_for_same_timeouts_900_to_1800": 2.75,
+      "percent_extra_vs_historical": 13.264278206096725,
+      "extra_minutes_per25_at_historical_rate": 41.25
+    },
+    {
+      "task": "tabular-playground-series-may-2022",
+      "timeouts": 9,
+      "historical_execution_hours": 12.840045709800325,
+      "extra_hours_for_same_timeouts_900_to_1800": 2.25,
+      "percent_extra_vs_historical": 17.52330210384422,
+      "extra_minutes_per25_at_historical_rate": 33.75
+    }
+  ],
+  "timeouts": [
+    {
+      "task": "dog-breed-identification",
+      "node": "tree-0002:n44",
+      "last_event": {
+        "iterations": 600,
+        "members": 3,
+        "inner_log_loss": 0.3910743218951311,
+        "temperature": 0.8,
+        "text_scale": 60.0,
+        "neighbor_count": 16,
+        "neighbor_weight": 0.05,
+        "stage": "fit_outer_catboost_ensemble",
+        "elapsed_seconds": 768.976
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 1547
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-dog-breed-identification/artifacts/objects/cf27151637aadafbc2d89cd8733eaf7d953908c606082ce082ebd6e17a1d4879/content.py"
+    },
+    {
+      "task": "jigsaw-toxic-comment-classification-challenge",
+      "node": "tree-0001:n9",
+      "last_event": {
+        "done": 48,
+        "total": 312735,
+        "stage": "encode_bge",
+        "elapsed_seconds": 636.723
+      },
+      "output_files": [
+        {
+          "name": "validation_predictions.csv",
+          "bytes": 3019289
+        },
+        {
+          "name": "validation-split.json",
+          "bytes": 638320
+        },
+        {
+          "name": "candidate-result.json",
+          "bytes": 173
+        },
+        {
+          "name": "runtime-audit.json",
+          "bytes": 1296
+        },
+        {
+          "name": "submission.csv",
+          "bytes": 22290080
+        }
+      ],
+      "validation_exists": true,
+      "submission_exists": true,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-jigsaw-toxic-comment-classification-challenge/artifacts/objects/3bcdc17c11ee3e73b83d2bdcfbb805877e3e1d773dacda703ad37c117014a747/content.py"
+    },
+    {
+      "task": "jigsaw-toxic-comment-classification-challenge",
+      "node": "tree-0003:n59",
+      "last_event": {
+        "done": 25728,
+        "total": 312735,
+        "stage": "encode_bge",
+        "elapsed_seconds": 800.108
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 957
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-jigsaw-toxic-comment-classification-challenge/artifacts/objects/51280767423e54918255e1ea57155e79377eb3cd450ead783b09623f6e08a682/content.py"
+    },
+    {
+      "task": "new-york-city-taxi-fare-prediction",
+      "node": "tree-0001:n24",
+      "last_event": {
+        "rows": 1199882,
+        "features": 30,
+        "categorical": 13,
+        "stage": "fit_catboost",
+        "elapsed_seconds": 36.34
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 960
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-new-york-city-taxi-fare-prediction/artifacts/objects/11b47c16c38d7754da896d996edbb996328f7286b6c42c5cadfa969207c5682d/content.py"
+    },
+    {
+      "task": "ranzcr-clip-catheter-line-classification",
+      "node": "tree-0001:n1",
+      "last_event": {
+        "images": 30083,
+        "stage": "feature_extraction",
+        "elapsed_seconds": 4.323
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 860
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-ranzcr-clip-catheter-line-classification/artifacts/objects/004592205f6ab8c9b3a404e25331a830557d3ad5164ee2ca636cf0f36565775f/content.py"
+    },
+    {
+      "task": "ranzcr-clip-catheter-line-classification",
+      "node": "tree-0001:n9",
+      "last_event": {
+        "rows": 27074,
+        "stage": "feature_extraction_train",
+        "elapsed_seconds": 4.829
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 851
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-ranzcr-clip-catheter-line-classification/artifacts/objects/a2efc3f5e8eeab4819e38bc948c34692bb833b58a592c4147268715c74be4393/content.py"
+    },
+    {
+      "task": "ranzcr-clip-catheter-line-classification",
+      "node": "tree-0001:n11",
+      "last_event": {
+        "rows": 27074,
+        "targets": 9,
+        "stage": "test_fit",
+        "elapsed_seconds": 817.533
+      },
+      "output_files": [
+        {
+          "name": "validation_predictions.csv",
+          "bytes": 933559
+        },
+        {
+          "name": "validation-split.json",
+          "bytes": 370416
+        },
+        {
+          "name": "candidate-result.json",
+          "bytes": 159
+        },
+        {
+          "name": "runtime-audit.json",
+          "bytes": 1372
+        }
+      ],
+      "validation_exists": true,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-ranzcr-clip-catheter-line-classification/artifacts/objects/4663af9c787142c3fec890fbcb23938eae2d69e2973226a8aa0a84b598d0a0cb/content.py"
+    },
+    {
+      "task": "ranzcr-clip-catheter-line-classification",
+      "node": "tree-0004:n77",
+      "last_event": {
+        "epoch": 3,
+        "rows": 21627,
+        "image_size": 384,
+        "stage": "fit",
+        "elapsed_seconds": 388.521
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 1196
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-ranzcr-clip-catheter-line-classification/artifacts/objects/7607971486d0b35634dea875f6a18d4c44935a1b9440be215e6e487febd6fb8e/content.py"
+    },
+    {
+      "task": "siim-isic-melanoma-classification",
+      "node": "tree-0001:n1",
+      "last_event": {
+        "rows": 33126,
+        "stage": "feature_extraction",
+        "elapsed_seconds": 4.695
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 827
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-siim-isic-melanoma-classification/artifacts/objects/f7994cf2c38bb0af3152fe7a1a2269ffad2bae28d8abe838b457a9f29e3be474/content.py"
+    },
+    {
+      "task": "siim-isic-melanoma-classification",
+      "node": "tree-0001:n6",
+      "last_event": {
+        "rows": 33126,
+        "budget_seconds": 900.0,
+        "stage": "feature_extraction",
+        "elapsed_seconds": 5.229
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 864
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-siim-isic-melanoma-classification/artifacts/objects/f6cd2c267fc7b0bf0e4e7b529e340d6d4defe3dc4e1a10ba6e4291fbf07255f0/content.py"
+    },
+    {
+      "task": "siim-isic-melanoma-classification",
+      "node": "tree-0001:n8",
+      "last_event": {
+        "rows": 23402,
+        "stage": "fit_validation",
+        "elapsed_seconds": 641.007
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 949
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-siim-isic-melanoma-classification/artifacts/objects/3dc9dfdd83397754bc0a072ccb16b9698c8cddde44c789e0e3bdc3a1ddaf8af4/content.py"
+    },
+    {
+      "task": "siim-isic-melanoma-classification",
+      "node": "tree-0001:n9",
+      "last_event": {
+        "rows": 28984,
+        "remaining_seconds": 0.0,
+        "stage": "fit_test",
+        "elapsed_seconds": 894.56
+      },
+      "output_files": [
+        {
+          "name": "validation_predictions.csv",
+          "bytes": 191080
+        },
+        {
+          "name": "validation-split.json",
+          "bytes": 89332
+        },
+        {
+          "name": "candidate-result.json",
+          "bytes": 159
+        },
+        {
+          "name": "runtime-audit.json",
+          "bytes": 1235
+        }
+      ],
+      "validation_exists": true,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-siim-isic-melanoma-classification/artifacts/objects/e6e145740066fd3ebe5775fccc78b96a2f8e6b1e51bcc604ede15ec5f5c4af7f/content.py"
+    },
+    {
+      "task": "siim-isic-melanoma-classification",
+      "node": "tree-0001:n11",
+      "last_event": {
+        "rows": 28984,
+        "remaining_seconds": 0.0,
+        "stage": "fit_test",
+        "elapsed_seconds": 892.245
+      },
+      "output_files": [
+        {
+          "name": "validation_predictions.csv",
+          "bytes": 191041
+        },
+        {
+          "name": "validation-split.json",
+          "bytes": 89332
+        },
+        {
+          "name": "candidate-result.json",
+          "bytes": 159
+        },
+        {
+          "name": "runtime-audit.json",
+          "bytes": 1252
+        }
+      ],
+      "validation_exists": true,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-siim-isic-melanoma-classification/artifacts/objects/d873338095dcd40ed6389967727adbb332065a5ca2af4dede02db5647ac8d386/content.py"
+    },
+    {
+      "task": "siim-isic-melanoma-classification",
+      "node": "tree-0002:n42",
+      "last_event": {
+        "rows": 28984,
+        "remaining_seconds": 0.0,
+        "stage": "fit_test",
+        "elapsed_seconds": 884.235
+      },
+      "output_files": [
+        {
+          "name": "validation_predictions.csv",
+          "bytes": 190799
+        },
+        {
+          "name": "validation-split.json",
+          "bytes": 89332
+        },
+        {
+          "name": "candidate-result.json",
+          "bytes": 159
+        },
+        {
+          "name": "runtime-audit.json",
+          "bytes": 1364
+        }
+      ],
+      "validation_exists": true,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-siim-isic-melanoma-classification/artifacts/objects/dc2c0bea196189619a611af42210e8d8af039827cb5902b44ec67b1bf44e4bfb/content.py"
+    },
+    {
+      "task": "siim-isic-melanoma-classification",
+      "node": "tree-0002:n49",
+      "last_event": {
+        "completed": 4832,
+        "total": 33126,
+        "stage": "siglip_image_batches",
+        "elapsed_seconds": 864.752
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 1173
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-siim-isic-melanoma-classification/artifacts/objects/b4a2a9149eb8629b8e8df1e3a7652712d2a9c2f9d23d3119ae73b570a72b7ecc/content.py"
+    },
+    {
+      "task": "siim-isic-melanoma-classification",
+      "node": "tree-0003:n59",
+      "last_event": {
+        "rows": 23402,
+        "components": 96,
+        "stage": "fit_pca",
+        "elapsed_seconds": 634.658
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 1079
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-siim-isic-melanoma-classification/artifacts/objects/7a10b29c3e0896fc0596429ac61b22c44a4a23eeb6fade620cab2974580fa04d/content.py"
+    },
+    {
+      "task": "siim-isic-melanoma-classification",
+      "node": "tree-0004:n76",
+      "last_event": {
+        "rows": 33126,
+        "wall_seconds": 900,
+        "stage": "image_features",
+        "elapsed_seconds": 7.474
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 891
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-siim-isic-melanoma-classification/artifacts/objects/24955d16ed42b6985f113c9c04b5a6fcebb2d2874bd322fe34c7adb8cf4eb8ef/content.py"
+    },
+    {
+      "task": "siim-isic-melanoma-classification",
+      "node": "tree-0004:n84",
+      "last_event": {
+        "rows": 23402,
+        "stage": "fit_validation",
+        "elapsed_seconds": 641.936
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 1075
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-siim-isic-melanoma-classification/artifacts/objects/ca6d6ecdef4335c85de848a4003acc402ec58e33c5610c63c11b030aa8c367f8/content.py"
+    },
+    {
+      "task": "siim-isic-melanoma-classification",
+      "node": "tree-0004:n96",
+      "last_event": {
+        "rows": 23402,
+        "stage": "fit_validation",
+        "elapsed_seconds": 646.658
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 1069
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-siim-isic-melanoma-classification/artifacts/objects/27f9d8997c48f3a37e4b69919daf21651f0000a31ff4abfe2b8962349bf22eca/content.py"
+    },
+    {
+      "task": "tabular-playground-series-may-2022",
+      "node": "tree-0001:n4",
+      "last_event": {
+        "rows": 800000,
+        "stage": "fit_final",
+        "elapsed_seconds": 438.844
+      },
+      "output_files": [
+        {
+          "name": "validation_predictions.csv",
+          "bytes": 4234570
+        },
+        {
+          "name": "validation-split.json",
+          "bytes": 1577805
+        },
+        {
+          "name": "candidate-result.json",
+          "bytes": 162
+        },
+        {
+          "name": "runtime-audit.json",
+          "bytes": 864
+        }
+      ],
+      "validation_exists": true,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-tabular-playground-series-may-2022/artifacts/objects/da4a9a979a7f6ffba866b00966833c35931a04bb1e8557bfbd3cf512894cdc74/content.py"
+    },
+    {
+      "task": "tabular-playground-series-may-2022",
+      "node": "tree-0002:n42",
+      "last_event": {
+        "epoch": 29,
+        "loss": 0.10723683061881568,
+        "seed": 2,
+        "stage": "nn_epoch",
+        "elapsed_seconds": 897.756
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 13950
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-tabular-playground-series-may-2022/artifacts/objects/0c0ac85e9c7e8e21f82fa11f9789c6688474308edbbcd0c3478b4687202f7a57/content.py"
+    },
+    {
+      "task": "tabular-playground-series-may-2022",
+      "node": "tree-0002:n43",
+      "last_event": {
+        "epoch": 24,
+        "loss": 0.11463594650879455,
+        "seed": 2,
+        "stage": "nn_epoch",
+        "elapsed_seconds": 892.088
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 13251
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-tabular-playground-series-may-2022/artifacts/objects/cbfca663979c1ed9673aadc8d98f5af8d3f1a3dfae253abff3de86d37886432b/content.py"
+    },
+    {
+      "task": "tabular-playground-series-may-2022",
+      "node": "tree-0002:n45",
+      "last_event": {
+        "epoch": 26,
+        "loss": 0.11013298474561672,
+        "seed": 2,
+        "stage": "nn_epoch",
+        "elapsed_seconds": 895.791
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 14378
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-tabular-playground-series-may-2022/artifacts/objects/36c02152dd0f06e88e80ccd79aa0278558659f090d3e57131f9106c64743d81a/content.py"
+    },
+    {
+      "task": "tabular-playground-series-may-2022",
+      "node": "tree-0002:n50",
+      "last_event": {
+        "epoch": 23,
+        "loss": 0.13491760532315167,
+        "seed": 2,
+        "stage": "nn_epoch",
+        "elapsed_seconds": 899.307
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 13110
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-tabular-playground-series-may-2022/artifacts/objects/5572575fa4ec544cf13dd7b6890fb83c8c70c8a15828dcf0b1f8572bafc89e79/content.py"
+    },
+    {
+      "task": "tabular-playground-series-may-2022",
+      "node": "tree-0003:n55",
+      "last_event": {
+        "epoch": 28,
+        "loss": 0.11771111513019368,
+        "seed": 2,
+        "stage": "nn_epoch",
+        "elapsed_seconds": 893.795
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 13834
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-tabular-playground-series-may-2022/artifacts/objects/4fd910ad8660636cd1d52f53e6296a358a3b80eb47d7299156d733d40764abef/content.py"
+    },
+    {
+      "task": "tabular-playground-series-may-2022",
+      "node": "tree-0003:n58",
+      "last_event": {
+        "epoch": 28,
+        "loss": 0.10899530743924193,
+        "seed": 2,
+        "stage": "nn_epoch",
+        "elapsed_seconds": 899.236
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 13823
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-tabular-playground-series-may-2022/artifacts/objects/dd0ba113c18509e0f1888b21d5c87470361c0134914a37ee823ff76a9a2d0c1a/content.py"
+    },
+    {
+      "task": "tabular-playground-series-may-2022",
+      "node": "tree-0004:n80",
+      "last_event": {
+        "epoch": 29,
+        "loss": 0.10630770241871429,
+        "seed": 2,
+        "stage": "nn_epoch",
+        "elapsed_seconds": 897.621
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 13982
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-tabular-playground-series-may-2022/artifacts/objects/a49a8d8747ab1949bb7c89ddbb8345b7dbfd9412df69226d4ec1de63cee06695/content.py"
+    },
+    {
+      "task": "tabular-playground-series-may-2022",
+      "node": "tree-0004:n83",
+      "last_event": {
+        "epoch": 21,
+        "loss": 0.11933755665160596,
+        "seed": 3,
+        "stage": "nn_epoch",
+        "elapsed_seconds": 899.566
+      },
+      "output_files": [
+        {
+          "name": "runtime-audit.json",
+          "bytes": 14680
+        }
+      ],
+      "validation_exists": false,
+      "submission_exists": false,
+      "source": "/opt/mle-rsi-fixes/runs/lite22-001/campaigns/dev-tabular-playground-series-may-2022/artifacts/objects/5fd05c33d57aa130acda7235c30f11d6378f8612b05ce8498c16bec0ad46beb6/content.py"
+    }
+  ],
+  "jigsaw_salvage": {
+    "node": "tree-0001:n9",
+    "validation_rows": 31915,
+    "validation_finite": true,
+    "validation_in_01": true,
+    "validation_macro_auc": 0.9864697340685494,
+    "submission_rows": 153164,
+    "submission_unique_ids": 153164,
+    "submission_finite": true,
+    "note": "CSV sanity/public score only; not accepted as official candidate or private graded"
+  },
+  "jigsaw_cpu_resources": [
+    {
+      "node": "tree-0001:n9",
+      "gpu": null,
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "node": "tree-0003:n59",
+      "gpu": null,
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    }
+  ]
+}
