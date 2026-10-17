@@ -1,0 +1,63 @@
+{
+  "time": 1792237005.2106106,
+  "run_dir": "/mnt/afs/yangsen1/experiments/lite22-cactus-reset-001/run",
+  "controller_pid": 643955,
+  "status": {
+    "state": "running",
+    "updated_at": 1792236985.72607,
+    "scheduling": "independent",
+    "blocked": {}
+  },
+  "retired_count": 14,
+  "budget_caps_unchanged": true,
+  "tasks": [
+    {
+      "task": "aerial-cactus-identification",
+      "state": "searching",
+      "updated_at": 1792236985.761412,
+      "round": 1
+    },
+    {
+      "task": "aptos2019-blindness-detection",
+      "state": "searching",
+      "updated_at": 1792236988.295917,
+      "round": 17
+    },
+    {
+      "task": "dog-breed-identification",
+      "state": "queued",
+      "updated_at": 1792236985.4132583,
+      "round": 8
+    },
+    {
+      "task": "jigsaw-toxic-comment-classification-challenge",
+      "state": "queued",
+      "updated_at": 1792236985.4814758,
+      "round": 12
+    },
+    {
+      "task": "new-york-city-taxi-fare-prediction",
+      "state": "queued",
+      "updated_at": 1792236985.5471315,
+      "round": 16
+    },
+    {
+      "task": "ranzcr-clip-catheter-line-classification",
+      "state": "queued",
+      "updated_at": 1792236985.61098,
+      "round": 12
+    },
+    {
+      "task": "siim-isic-melanoma-classification",
+      "state": "queued",
+      "updated_at": 1792236985.670498,
+      "round": 12
+    },
+    {
+      "task": "tabular-playground-series-may-2022",
+      "state": "queued",
+      "updated_at": 1792236985.7082691,
+      "round": 13
+    }
+  ]
+}

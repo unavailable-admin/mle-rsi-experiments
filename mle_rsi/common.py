@@ -143,3 +143,14 @@ def load_spec(path):
             return result
         return value
     return expand(read(path))
+
+
+def request_namespace(spec, task):
+    """Keep existing request IDs on resume; explicitly isolate a reset task."""
+    stage = spec.get('stage2')
+    if not stage:
+        return ''
+    namespace = stage.get('task_namespaces', {}).get(task, 'stage2')
+    if not namespace or any(c not in 'abcdefghijklmnopqrstuvwxyz0123456789-' for c in namespace):
+        raise ValueError('Invalid task request namespace')
+    return namespace

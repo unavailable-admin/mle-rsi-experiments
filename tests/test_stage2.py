@@ -183,3 +183,56 @@ async def test_cumulative_online_policy_context_matches_replay(tmp_path,monkeypa
     await run(tmp_path/'run',through_round=2)
     assert any(count>25 for count,_ in seen)
     assert all(context==0 for _,context in seen)
+
+
+def test_kfold_prompt_retains_full_training_contract():
+    from types import SimpleNamespace
+    from mle_rsi.candidate_contract import StagePrompts
+    class Wrapped:
+        def build(self, *args, **kwargs):return []
+    prompts=StagePrompts(Wrapped(),{})
+    normal=prompts.build(SimpleNamespace(benchmark_protocol_id='mle-public-v2'))[-1]['content']
+    folded=prompts.build(SimpleNamespace(benchmark_protocol_id='mle-public-kfold-v1'))[-1]['content']
+    assert 'Use mle_runtime.record_training_contract(members)' in normal
+    assert 'Use mle_runtime.record_kfold_training_contract' in folded
+    assert 'Use mle_runtime.record_training_contract(members)' not in folded
+
+
+@pytest.mark.asyncio
+async def test_replay_timeout_uses_committed_parents_not_new_fallback(tmp_path):
+    from dream_rsi.storage import CampaignStore
+    from dream_rsi.models import PolicyView, ReplayStep, BatchDecision
+    from mle_rsi.policy_recovery import RecoveringPolicyWorker
+    store=CampaignStore(tmp_path)
+    nodes=({'node_id':'r','score':0,'child_ids':[]},{'node_id':'n1','score':1,'child_ids':[]})
+    view=PolicyView(nodes[0],nodes,('r','n1'),(),(),0,5,5,parent_repeats_allowed=True)
+    step=ReplayStep(0,('r',)*5,('n2',),(), 'original decision')
+    store.put('tree','tree',{'rounds':(step,)})
+    store.put('policy_fallback','tree:0',{'error':'worker timeout','decision':BatchDecision(('n1',)*5)})
+    worker=RecoveringPolicyWorker('',None,store=store,tree_id='tree')
+    result=await worker.decide(view)
+    assert result.parent_ids==step.parent_ids and result.host_guarded
+    assert store.get('policy_fallback','tree:0')['decision'].parent_ids==('n1',)*5
+    assert store.get('policy_replay_recovery','tree:0')['decision']==result
+    from dataclasses import replace
+    future=await worker.decide(replace(view,round_index=1))
+    assert future.parent_ids!=step.parent_ids
+    store.close()
+
+
+@pytest.mark.asyncio
+async def test_healthy_policy_replay_is_not_silently_overridden(tmp_path,monkeypatch):
+    from dream_rsi.storage import CampaignStore
+    from dream_rsi.models import PolicyView, ReplayStep, BatchDecision
+    from dream_rsi.policy_runtime import PolicyWorker
+    from mle_rsi.policy_recovery import RecoveringPolicyWorker
+    store=CampaignStore(tmp_path)
+    nodes=({'node_id':'r','score':0,'child_ids':[]},{'node_id':'n1','score':1,'child_ids':[]})
+    view=PolicyView(nodes[0],nodes,('r','n1'),(),(),0,5,5,parent_repeats_allowed=True)
+    store.put('tree','tree',{'rounds':(ReplayStep(0,('r',)*5,(),()),)})
+    async def decide(*args):return BatchDecision(('n1',)*5)
+    monkeypatch.setattr(PolicyWorker,'decide',decide)
+    worker=RecoveringPolicyWorker('',None,store=store,tree_id='tree')
+    assert (await worker.decide(view)).parent_ids==('n1',)*5  # Online consistency guard still catches mismatch.
+    assert not store.list('policy_replay_recovery')
+    store.close()

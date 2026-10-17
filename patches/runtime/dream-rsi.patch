@@ -1,5 +1,5 @@
 diff --git a/my_rsi/src/dream_rsi/campaign.py b/my_rsi/src/dream_rsi/campaign.py
-index b204c80..090c8a7 100644
+index b204c80..9209ab2 100644
 --- a/my_rsi/src/dream_rsi/campaign.py
 +++ b/my_rsi/src/dream_rsi/campaign.py
 @@ -34,7 +34,7 @@ from .workspaces import HistoryContextBuilder, SnapshotStore
@@ -150,10 +150,33 @@ index b204c80..090c8a7 100644
          if checkpoint["phase"] == "SELECTED":
              tree = DiscoveryTree.from_payload(self.store.get("tree",tree_id))
              nodes = tree.nodes[tree.initial_node_count:]
-@@ -451,6 +346,152 @@ class Campaign:
+@@ -443,6 +338,7 @@ class Campaign:
+                        "best_score":checkpoint["best_node"].score,"selected_id":checkpoint["selected_id"],
+                        "offline_from_original_root":self.config.offline_from_original_root,
+                        "selected_mean_V":checkpoint["selected_mean_V"],"evaluated_versions":checkpoint["evaluated_versions"],
++                       "offline_status":checkpoint.get("offline_status", "completed"),
+                        "pool_hash":checkpoint["pool_hash"],"online":checkpoint["online_report"],"usage_cumulative":self.ledger.summary()}
+             self.store.put("round_best", str(round_index), {"best_node":checkpoint["best_node"], "usage":self.ledger.summary()})
+             self.store.put("round_summary",str(round_index),summary)
+@@ -451,6 +347,172 @@ class Campaign:
              self.checkpoints.save(self.config.campaign_id,checkpoint)
          return self.store.get("round_summary",str(round_index))
  
++    def _retain_policy_after_timeout(self, checkpoint, round_index, prefix, save, exc):
++        # Reuse an already validated policy, never invent a score on the new pool.
++        incumbent = self.store.get("policy", checkpoint["incumbent_id"])
++        if incumbent is None or incumbent.status != "valid" or incumbent.evaluation is None:
++            raise InfrastructureError("Offline timeout without a previously validated incumbent") from exc
++        record = {"round": round_index, "pool_hash": checkpoint["pool_hash"],
++                  "selected_id": incumbent.version_id, "reason": str(exc),
++                  "status": "skipped_timeout", "current_pool_score": None}
++        self.store.put("offline_fallback", prefix + str(round_index), record)
++        self.registry.activate(incumbent.version_id, round_index + 1)
++        checkpoint = {**checkpoint, "phase": "SELECTED", "selected_id": incumbent.version_id,
++                      "selected_mean_V": None, "evaluated_versions": 0, "offline_status": "skipped_timeout"}
++        save(checkpoint)
++        return checkpoint
++
 +    async def _dream(self, checkpoint, round_index, prefix="", save=None):
 +        save = save or (lambda cp: self.checkpoints.save(self.config.campaign_id, cp))
 +        record_key = prefix + str(round_index)
@@ -232,10 +255,15 @@ index b204c80..090c8a7 100644
 +                            proposal = {'source':'', 'change_note':'Model request failed; policy revision skipped: '+str(exc)}
 +                    proposal = await self._tuned(proposal,pool,evaluator,version_id)
 +                version = self.registry.register(proposal["source"],base.version_id,proposal["change_note"],version_id)
-+            if version.evaluation is None:
++            from .errors import PolicyTimeout, legacy_replay_timeout
++            if legacy_replay_timeout(version.evaluation):
++                self.store.put("replay_timeout_legacy_policy", version.version_id, version)
++            if version.evaluation is None or legacy_replay_timeout(version.evaluation):
 +                try:
 +                    PolicySourceValidator.validate(version.source)
 +                    bundle = await evaluator.evaluate(version,pool,self.config.K2)
++                except PolicyTimeout as exc:
++                    return self._retain_policy_after_timeout(checkpoint, round_index, prefix, save, exc)
 +                except PolicyError as exc:
 +                    bundle = EvaluationBundle(pool.pool_hash,(),None,"invalid",digest([version.source_hash,pool.pool_hash]),str(exc))
 +                version = self.registry.attach_evaluation(version.version_id,bundle)
@@ -270,7 +298,7 @@ index b204c80..090c8a7 100644
 +        emit("策略选择", detail=f"{selected.version_id} mean_V={selected.mean_V:.6g}")
 +        self.registry.activate(selected.version_id,round_index+1)
 +        checkpoint = {**checkpoint,"phase":"SELECTED","selected_id":selected.version_id,
-+                      "evaluated_versions":len(versions),"selected_mean_V":selected.mean_V}
++                      "evaluated_versions":len(versions),"selected_mean_V":selected.mean_V,"offline_status":"completed"}
 +        save(checkpoint)
 +        return checkpoint
 +
@@ -316,6 +344,29 @@ index 06841d7..57d995f 100644
          root = world.nodes[0].score
          reachable = [n.score for n in world.nodes[1:] if n.evaluation.valid and n.depth <= cap]
          result.append({"world_id":world.world_id,"scenario_seed":seed,"beta":beta,"V":V,
+diff --git a/my_rsi/src/dream_rsi/errors.py b/my_rsi/src/dream_rsi/errors.py
+index c5fbc22..5802796 100644
+--- a/my_rsi/src/dream_rsi/errors.py
++++ b/my_rsi/src/dream_rsi/errors.py
+@@ -39,3 +39,18 @@ class ModelRequestTimeout(ExternalUnknown):
+ 
+ class ResponseError(RSIError):
+     pass
++
++
++class PolicyTimeout(PolicyError):
++    """Local worker deadline expired; safe to replay without external calls."""
++
++
++def legacy_replay_timeout(value):
++    """Recognize only the old empty TimeoutError message, never malformed JSON."""
++    if value is None or getattr(value, 'status', None) != 'invalid':
++        return False
++    rows = getattr(value, 'worlds', None)
++    if rows is not None:
++        failed = [r for r in rows if r.status == 'invalid']
++        return bool(failed) and all(legacy_replay_timeout(r) for r in failed)
++    return getattr(value, 'error', None) == 'Policy timeout or malformed output: '
 diff --git a/my_rsi/src/dream_rsi/evidence.py b/my_rsi/src/dream_rsi/evidence.py
 index 61f7777..9b97bb7 100644
 --- a/my_rsi/src/dream_rsi/evidence.py
@@ -445,10 +496,35 @@ index 0975939..ff06d9b 100644
          return {"parent_ids": parents, "next_state": {}, "reason": reason}
  '''
 diff --git a/my_rsi/src/dream_rsi/policy_runtime.py b/my_rsi/src/dream_rsi/policy_runtime.py
-index 667b9d4..1fae467 100644
+index 667b9d4..7e212c0 100644
 --- a/my_rsi/src/dream_rsi/policy_runtime.py
 +++ b/my_rsi/src/dream_rsi/policy_runtime.py
-@@ -186,12 +186,17 @@ class PolicyWorker:
+@@ -11,7 +11,7 @@ from pathlib import Path
+ 
+ from .codec import json_text, plain
+ from .config import ResourceLimits
+-from .errors import PolicyError
++from .errors import PolicyError, PolicyTimeout
+ from .models import BatchDecision
+ from .sandbox import BwrapSandbox, bounded_read, kill_process
+ from .tree import BatchValidator
+@@ -178,20 +178,33 @@ class PolicyWorker:
+             if not isinstance(result,dict):
+                 raise PolicyError("Policy response must be an object")
+             return result
+-        except (asyncio.TimeoutError,ValueError) as exc:
++        except asyncio.TimeoutError as exc:
++            process, stderr = self.process, self.stderr_task
+             await self.close()
+-            raise PolicyError(f"Policy timeout or malformed output: {exc}") from exc
++            detail = (stderr.result() or b"").decode(errors="replace") if stderr and stderr.done() and not stderr.cancelled() else ""
++            raise PolicyTimeout(f"Policy response timeout: phase={getattr(self, 'read_phase', 'startup')}; "
++                                f"limit_s={self.limits.wall_time_s}; returncode={process.returncode}; stderr={detail[-8192:]}") from exc
++        except ValueError as exc:
++            await self.close()
++            raise PolicyError(f"Malformed policy output: {exc}") from exc
+ 
+     async def decide(self, view, state=None):
          if self.process is None or self.process.returncode is not None:
              raise PolicyError("Policy worker is not running")
          state = self.state if state is None else state
@@ -462,12 +538,25 @@ index 667b9d4..1fae467 100644
              await self.close()
 -            raise PolicyError("Policy failed while receiving view") from exc
 +            detail = (stderr.result() or b"").decode(errors="replace") if stderr and not stderr.cancelled() else ""
-+            raise PolicyError(f"Policy failed while receiving view: {type(exc).__name__}; "
++            error_type = PolicyTimeout if isinstance(exc, asyncio.TimeoutError) else PolicyError
++            raise error_type(f"Policy failed while receiving view: {type(exc).__name__}; "
 +                              f"input_bytes={len(request)}; returncode={process.returncode}; "
 +                              f"stderr={detail[-8192:]}") from exc
++        self.read_phase = "decision"
          payload = await self._read()
          if "error" in payload:
              raise PolicyError(payload["error"])
+@@ -222,7 +235,9 @@ class PolicyWorker:
+             await asyncio.wait_for(self.process.stdin.drain(),self.limits.wall_time_s)
+         except (asyncio.TimeoutError,BrokenPipeError,ConnectionResetError) as exc:
+             await self.close()
+-            raise PolicyError("Policy failed while resetting episode") from exc
++            error_type = PolicyTimeout if isinstance(exc, asyncio.TimeoutError) else PolicyError
++            raise error_type("Policy failed while resetting episode") from exc
++        self.read_phase = "reset"
+         payload = await self._read()
+         if not isinstance(payload.get("initial_state"),dict):
+             raise PolicyError(payload.get("error","initial_state must return JSON object"))
 diff --git a/my_rsi/src/dream_rsi/prompting.py b/my_rsi/src/dream_rsi/prompting.py
 index 77b9461..9d87bd8 100644
 --- a/my_rsi/src/dream_rsi/prompting.py
@@ -580,3 +669,105 @@ index 86aaeb6..09fe9a4 100644
      result=replace(decision,parent_ids=tuple(parents),reason=reason,host_guarded=True)
      BatchValidator.validate(result,bounded_view)
      return result
+diff --git a/my_rsi/src/dream_rsi/replay.py b/my_rsi/src/dream_rsi/replay.py
+index 0879f2b..8e1ba15 100644
+--- a/my_rsi/src/dream_rsi/replay.py
++++ b/my_rsi/src/dream_rsi/replay.py
+@@ -9,7 +9,7 @@ from dataclasses import dataclass, replace
+ 
+ from .codec import digest, plain
+ from .config import ProtocolFingerprint, ResourceLimits, positive_int
+-from .errors import PolicyError, ProtocolError
++from .errors import PolicyError, ProtocolError, PolicyTimeout, legacy_replay_timeout
+ from .models import EvaluationBundle, ReplayStep, ReplayTrajectory, WorldEvaluation
+ from .policy_runtime import PolicyWorker
+ from .progress import emit
+@@ -775,8 +775,10 @@ class PoolEvaluator:
+         key = digest({"source":source,"comparison_hash":comparison})
+         if self.store:
+             cached = self.store.get("pool_evaluation",key)
+-            if cached:
++            if cached and not legacy_replay_timeout(cached):
+                 return cached
++            if legacy_replay_timeout(cached):
++                self.store.put("replay_timeout_legacy_pool", key, cached)
+         from .policy_runtime import PolicySourceValidator
+         try:
+             PolicySourceValidator.validate(source)
+@@ -812,17 +814,38 @@ class PoolEvaluator:
+                 emit("Offline 回放", done=completed, total=len(scenarios), detail=detail)
+                 episode_key = digest([source,comparison,world.world_hash,beta,seed])
+                 row = self.store.get("replay_episode",episode_key) if self.store else None
++                if legacy_replay_timeout(row):
++                    self.store.put("replay_timeout_legacy_episode", episode_key, row)
++                    row = None
+                 if row is None:
+                     try:
+-                        options = self.run_options()
+-                        if self.persistent_policy_workers:
+-                            if not holder:
+-                                holder.append(await PolicyWorker.start(source,self.policy_limits))
+-                            options['worker'] = holder[0]
+-                        trajectory = await ReplayRunner(diagnostics[world.world_hash]).run(world,source,replay_limits,self.W,self.policy_limits,beta,seed,self.jitter_scale,**options)
++                        attempts = self.store.get("replay_timeout_attempts", episode_key) if self.store else None
++                        failures = list((attempts or {}).get("failures", []))
++                        while True:
++                            if len(failures) >= 3:
++                                raise PolicyTimeout("Replay exhausted 3 worker timeouts: " + failures[-1])
++                            try:
++                                options = self.run_options()
++                                if self.persistent_policy_workers:
++                                    if not holder:
++                                        holder.append(await PolicyWorker.start(source,self.policy_limits))
++                                    options['worker'] = holder[0]
++                                trajectory = await ReplayRunner(diagnostics[world.world_hash]).run(world,source,replay_limits,self.W,self.policy_limits,beta,seed,self.jitter_scale,**options)
++                                break
++                            except PolicyTimeout as exc:
++                                if holder:
++                                    await holder[0].close()
++                                    holder.clear()
++                                failures.append(str(exc))
++                                if self.store:
++                                    self.store.put("replay_timeout_attempts", episode_key, {"failures": failures})
++                                if len(failures) < 3:
++                                    await asyncio.sleep(len(failures))
+                         values = self.score(world,trajectory)
+                         row = WorldEvaluation(world.world_id,trajectory=trajectory,scheduling_beta=beta,scenario_seed=seed,
+                                               replay_kind=world.replay_kind,source_world_ids=world.source_world_ids,**values)
++                    except PolicyTimeout:
++                        raise
+                     except PolicyError as exc:
+                         if holder:
+                             await holder[0].close()
+diff --git a/my_rsi/tests/test_persistent_replay.py b/my_rsi/tests/test_persistent_replay.py
+index 8e03baf..c1edb4e 100644
+--- a/my_rsi/tests/test_persistent_replay.py
++++ b/my_rsi/tests/test_persistent_replay.py
+@@ -6,7 +6,7 @@ import pytest
+ 
+ from conftest import make_tree
+ from dream_rsi.config import ConfigLoader, ResourceLimits
+-from dream_rsi.errors import ProtocolError
++from dream_rsi.errors import ProtocolError, PolicyTimeout
+ from dream_rsi.policy_runtime import PolicyWorker
+ from dream_rsi.replay import HistoryPool, PoolEvaluator, ReplayWorld, TreeObjective
+ 
+@@ -67,9 +67,16 @@ async def test_failed_episode_restarts_worker_for_remaining_scenarios(monkeypatc
+         await original(worker)
+         pids.append(worker.process.pid)
+     monkeypatch.setattr(PolicyWorker,"open",opened)
+-    result = await PoolEvaluator(TreeObjective(.01,.005),W=1,scenario_seeds=(0,1,2),
++    evaluator = PoolEvaluator(TreeObjective(.01,.005),W=1,scenario_seeds=(0,1,2),
+                                  policy_limits=ResourceLimits(wall_time_s=1),
+-                                 persistent_policy_workers=True).evaluate(source,pool(),5)
++                                 persistent_policy_workers=True)
++    if failure == 'timeout':
++        with pytest.raises(PolicyTimeout, match='exhausted 3'):
++            await evaluator.evaluate(source,pool(),5)
++        assert len(pids) == 3
++        assert_reaped(pids)
++        return
++    result = await evaluator.evaluate(source,pool(),5)
+     assert [row.status for row in result.worlds] == ["valid","invalid","valid"]
+     assert len(pids) == 2
+     assert_reaped(pids)

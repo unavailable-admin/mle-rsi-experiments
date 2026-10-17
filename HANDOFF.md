@@ -1,8 +1,42 @@
 # 5090 / 4090 实验统一交接（2026-10-17）
 
+分支累计改动、context overflow 缓解及当前限制见 [bug-fix 汇总](docs/bug-fix-summary-20261017.md)。本次提交前回归验证 50 项控制器测试及 1 项三折评分测试通过；依赖本地修改由 patches/runtime 完整版本化，固定子模块基线不变。
+
+## 最新：用户授权立即中断并回退（2026-10-17）
+用户接受丢弃未完成轮次，不再等训练自然结束。已停止自动等待脚本，强制停止所属控制器及10个训练容器，仅影响该实验。各题恢复至最近 seal+official-result 完整边界：APTOS16、Dog8、Jigsaw12、Taxi16、RANZCR12、Melanoma12、TabularMay13；Cactus已退役。备份DB/配置/账本及回退脚本在实验 `evidence/forced-boundary-restart/`。
+原始预算账本逐项保持不变；在途/504未知记录纳入 lineage.historical_unsettled，保留所有费用预留；新请求/执行使用 rollback-20261017 命名空间避免冲突。新控制器PID1083455。之前 PID1047779 以及等待恢复PID1079795均不再运行。以前的“Melanoma待解除阻塞”条目已由此次回退取代。此次恢复没有实现将来504自动重试，仍是待改进项。
+
+## 切换状态补充（2026-10-17 16:43 UTC）
+旧控制器已正常退出。第一次补丁启动失败：漏迁移 metadata.continuation_search_protocol（implementation_hash 改变），无候选重跑。已逐题验证原配置、旧 implementation hash 和原 search hash，仅更新未退役题的 runtime implementation_hash/search hash，评分 protocol_hash 与预算保持不变；证据在实验 evidence/offline-timeout-switch/runtime-migration*.json。新控制器 PID 1047779 已进入 running，APTOS R17 已进入运行。
+另发现 Melanoma 被未结算请求保护阻塞：stage2:dev-siim-isic-melanoma-classification:tree-0012:r3:a2:response:0，HTTP 504、uncertain，保留 0.861844 美元预留；未重发、未清账。当前不可声称全部任务恢复正常。
+
+## 待部署：offline 回放超时恢复（2026-10-17）
+
+用户随后授权开始切换（“现在可以么”）。已于 2026-10-17 15:45 UTC 请求优雅 stop，并启动独立自动切换进程 PID 998609。脚本等待控制器正常退出，再部署 4 个 runtime 文件、审计解除 APTOS 阻塞并启动续跑。不可重复启动切换脚本；状态见 `/mnt/afs/yangsen1/experiments/lite22-cactus-reset-001/evidence/offline-timeout-switch/status.json`，日志 `switch.log`。出现意外 blocked 或用户撤销 stop 时会停止自动部署。
+验证：35 项不同的相关测试通过（包含 7 项新增恢复测试）；1000 版本存储压力测试主动中止，未计为通过。原 offline 中断恢复测试单独通过。补丁干净基线重建和 diff 检查通过。
+开发补丁新增 PolicyTimeout 分类、三次有持久记录的本地回放重试、历史超时缓存审计恢复，以及耗尽后沿用已验证策略的明确降级收尾。新池分数保持 null，候选/账本不改。详见 docs/stage2.md 末节。
+APTOS R17 原因：scenario 0 等待子进程超时，同策略另外 3 场景成功；隔离复核同冻结池 hash、同场景、同 8 秒限制，5 步回放成功，总计约 0.184 秒。原日志不足以确定当时的环境延迟来源。截至启动等待脚本时，运行代码及 blocked 状态未变；之后以切换状态文件和 deployment.json 为准。
+
+
 新 Codex 对话先读本文。本文是当前工作的唯一交接入口；下方旧文档仅供查证，不能覆盖本页最新状态。
 
-## 最新进展：第二阶段已准备，尚未启动（2026-10-17）
+## 自动恢复修复已部署（2026-10-17）
+
+用户已授权修复 Cactus 连接失败和 Dog 策略回放故障，并实现自动恢复。旧控制器已正常排空已接收批次并退出。`lite22-cactus-reset-001/evidence/auto-recovery/deploy.py` 已使用 `tested-code/` 中通过测试的 5 个源码文件完成部署，审计恢复 5 个已证实未发送的 Cactus 请求，保留原账本全部费用和预留，并启动新控制器 PID 732372。不要另外启动第二个控制器；实时状态看新 run，部署证据见 `deploy.log` 和 `deployment.json`。
+
+38 项相关测试通过；真实 Dog R8 的 4 个批次/195 个候选已完成零 API、零训练回放核验。详细规则见 `docs/stage2.md` 自动恢复一节；只重试已证实未发送的连接失败，未知结果请求继续保留预留并阻塞。历史批次回放故障沿用已提交决策，不重新选择旧父节点。全部费用预留、已收费用和预算上限保持。
+
+## 最新进展：独立逐题续跑与 Cactus 三折重启（2026-10-17）
+
+本节覆盖下方历史状态。用户已授权启动新实验，不追加预算：`/mnt/afs/yangsen1/experiments/lite22-cactus-reset-001/{code,run,evidence}`。旧 `lite22-stage2-001` 控制器已正常停止并结算在途 Dog 候选；旧目录为不可变历史依赖，必须保留，不要再启动它。
+
+- Cactus 空搜索树、初始策略，从 R1 开始；固定 3 折分层（seed=20261017），每折训练 9450 / 验证 4725 行，全部 14175 行各有一次折外预测，以三折平均 AUC 选优。最终相同配置全量重训；不继承旧候选或排名。
+- 其余 7 题继承停机时精确状态：Dog 已完成 R7、保留 R8 前四批（195 节点）；APTOS R16；Taxi R15；Tabular May R12；Jigsaw、RANZCR、Melanoma R11。验证协议不变；14 获牌题封存。
+- 各题独立推进自己的下一轮，不追齐轮号。原资源限流、累计费用、预算上限、截止时间保持不变；Cactus 新请求命名空间 `cactus-reset1`。
+- 已于 2026-10-17 11:34 UTC 启动最终冻结版本，控制器 PID 643955，11:36 UTC 进入 `running / independent`，8 题已按自身下一轮入队、blocked={}；具体实时状态以新 run 的 `round-status.json` 和 `task-status/` 为准。三网页沿用 19170/19171/19172，启动须显式指定新 run。详情见 `docs/stage2.md`。
+- 57 项不同测试覆盖调度、续跑、三折评分、提示和网页缓存；首次总览读取历史超过旧等待时限，已修复重复解码并放宽等待后启动。证据在新实验 `evidence/`，包括 `verification.json`、`kfold-native-tests.log`、`kfold-final-regression-tests.log`、`dashboard-final-tests.log`、`kfold-prompt-tests.log`、`upgrade-kfold.log`；先前未启动的单划分配置归档于 `single-holdout-before-launch/`。
+
+## 第二阶段最初准备时的状态（历史）
 
 本节及 `docs/stage2.md` 覆盖下方第一阶段整理时的授权和待办状态。已按用户要求实现十项待办的工程支持，并准备独立新实验。用户明确授权新增 API 总计 $150、每题 $15、每题执行/GPU 各 50 小时；历史账本和未结算预留完整保留。不自动启动训练或生成请求。
 

@@ -204,6 +204,76 @@ def prepare(task, public, destination):
     finish_manifest(destination, meta)
 
 
+def prepare_cactus_kfold(public, destination, seed=20261017):
+    """Freeze a fresh Cactus protocol; never overwrite an existing manifest."""
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import StratifiedKFold
+    destination = Path(destination)
+    if (destination/'manifest.json').exists():
+        meta = verify_prepared(destination)
+        if meta.get('validation_protocol') != 'stratified_kfold' or meta['seed'] != seed:
+            raise ValueError('Existing validation protocol differs')
+        return
+    destination.mkdir(parents=True, exist_ok=True)
+    frame = pd.read_csv(Path(public)/'train.csv', dtype={'id': str})
+    if frame.id.duplicated().any() or set(frame.has_cactus.unique()) != {0, 1}:
+        raise ValueError('Cactus requires unique IDs and binary labels')
+    split = frame[['id']].copy(); split['row_index'] = np.arange(len(frame)); split['fold'] = -1
+    counts = []
+    for fold, (train, valid) in enumerate(StratifiedKFold(3, shuffle=True, random_state=seed).split(frame, frame.has_cactus)):
+        split.loc[valid, 'fold'] = fold
+        counts.append({'fold': fold, 'n_train': len(train), 'n_validation': len(valid)})
+    split.to_csv(destination/'split.csv', index=False)
+    frame[['id', 'has_cactus']].to_csv(destination/'truth.csv', index=False)
+    finish_manifest(destination, {'version': 3, 'task': 'aerial-cactus-identification',
+        'seed': seed, 'id_kind': 'literal', 'validation_protocol': 'stratified_kfold',
+        'n_splits': 3, 'aggregation': 'mean_fold_auc', 'fold_counts': counts,
+        'split_file': '/validation/split.csv', 'manifest_path': '/validation/manifest.json',
+        'prediction_file': 'validation_predictions.csv', 'prediction_id_column': 'id',
+        'source_file': 'train.csv', 'source_id_column': 'id', 'group_column': None,
+        'metric': 'auc', 'targets': ['has_cactus'], 'prediction_columns': ['prediction'],
+        'n_train': min(row['n_train'] for row in counts), 'n_validation': len(frame),
+        'final_n_train': len(frame), 'validation_unit': 'out-of-fold row',
+        'allowed_feature_columns': None, 'data_overrides': {},
+        'calibration': 'Fit only on the current outer training folds or their inner splits.'})
+
+
+def score_kfold(directory, output, meta, truth, pred):
+    import numpy as np
+    import pandas as pd
+    from sklearn.metrics import roc_auc_score, log_loss
+    split = pd.read_csv(directory/'split.csv', dtype={'id': str}).set_index('id')
+    folds = split.loc[truth['id'], 'fold'].to_numpy()
+    if 'fold' not in pred or not np.array_equal(pred['fold'].astype(str).to_numpy(), folds.astype(str)):
+        raise ValueError('Prediction fold IDs differ from host-owned folds')
+    contract = json.loads((output/'training-contract.json').read_text())
+    if contract.get('validation_protocol') != 'stratified_kfold' or contract.get('n_splits') != 3:
+        raise ValueError('Missing three-fold training contract')
+    members = contract.get('members', [])
+    if not members or any(not m.get('name') or not m.get('validation') or
+            m.get('final') != m['validation'] or m.get('folds') != [m['validation']]*3 for m in members):
+        raise ValueError('Fold/final training configurations differ')
+    def ids_hash(ids):
+        return hashlib.sha256(json.dumps(sorted(map(str, ids)), separators=(',', ':')).encode()).hexdigest()
+    expected = []
+    for fold in range(3):
+        train = split.index[split.fold != fold]; valid = split.index[split.fold == fold]
+        expected.append({'fold': fold, 'n_train': len(train), 'n_validation': len(valid),
+                        'train_ids_sha256': ids_hash(train), 'validation_ids_sha256': ids_hash(valid)})
+    if contract.get('fold_training') != expected:
+        raise ValueError('Recorded fold membership differs from host split')
+    if contract.get('final_training') != {'n_train': len(split), 'ids_sha256': ids_hash(split.index), 'refit': True}:
+        raise ValueError('Missing full-data final refit record')
+    y = truth['has_cactus'].to_numpy(dtype=int); p = pred['prediction'].to_numpy(dtype=float)
+    aucs = [float(roc_auc_score(y[folds == f], p[folds == f])) for f in range(3)]
+    losses = [float(log_loss(y[folds == f], p[folds == f], labels=[0, 1])) for f in range(3)]
+    return {'aggregation': 'mean_fold_auc', 'fold_auc': aucs, 'fold_auc_std': float(np.std(aucs)),
+            'fold_logloss': losses, 'mean_auc': float(np.mean(aucs)),
+            'pooled_oof_auc': float(roc_auc_score(y, p)), 'training_contract_checked': True,
+            'audit_limit': 'Membership and settings are candidate declarations; arbitrary training code is not proven leakage-free.'}
+
+
 def finish_manifest(destination, meta):
     files = [p for p in destination.rglob('*') if p.is_file() and p.name!='manifest.json']
     meta['file_hashes'] = {str(p.relative_to(destination)): file_hash(p) for p in files}
@@ -320,6 +390,10 @@ def score(directory, output, public=None):
             if (p<0).any():raise ValueError('RMSLE predictions must be nonnegative')
             value = float(np.sqrt(np.mean((np.log1p(y.astype(float))-np.log1p(p))**2,axis=0)).mean())
         else:raise ValueError('Unknown independent metric '+metric)
+    cv = {}
+    if meta.get('validation_protocol') == 'stratified_kfold':
+        cv = score_kfold(directory, output, meta, truth, pred)
+        value = cv['mean_auc']
     if not np.isfinite(value):raise ValueError('Independent score is non-finite')
     diagnostics={}
     if metric in ('multiclass','logloss'):
@@ -337,6 +411,7 @@ def score(directory, output, public=None):
         fingerprints['submission']=prediction_fingerprint(submission,submission_check['id_column'],submission_check['prediction_columns'],metric!='text_accuracy')
     return {'validation_score':float(value),'independently_scored':True,'scored_predictions':len(truth),
             'probability_diagnostics':diagnostics,'prediction_fingerprints':fingerprints,
+            **({'cross_validation': cv} if cv else {}),
             'n_validation':meta['n_validation'],'n_train':meta['n_train'],
             'manifest_sha256':file_hash(directory/'manifest.json'),'metric':metric,'submission_contract':submission_check}
 

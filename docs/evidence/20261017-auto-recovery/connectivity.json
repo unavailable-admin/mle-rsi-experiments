@@ -1,0 +1,7 @@
+{
+  "tls_connection_succeeded": true,
+  "http_status": 401,
+  "seconds": 0.34,
+  "authenticated": false,
+  "generation_requests": 0
+}

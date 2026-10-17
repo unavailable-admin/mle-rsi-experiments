@@ -44,8 +44,10 @@ class GeminiTransport:
                  'generationConfig':{'temperature':1,'maxOutputTokens':config.max_output_tokens,
                                      'thinkingConfig':{'thinkingLevel':'HIGH'}}}
         ident=f'{self.campaign_id}:{request_id}'
-        if self.spec.get('stage2'):ident='stage2:'+ident
-        directory=self.root/'api'/('stage2-'+self.campaign_id if self.spec.get('stage2') else self.campaign_id)/hashlib.sha256(request_id.encode()).hexdigest()[:24]
+        from .common import request_namespace
+        namespace = request_namespace(self.spec, self.task)
+        if namespace: ident=namespace+':'+ident
+        directory=self.root/'api'/(namespace+'-'+self.campaign_id if namespace else self.campaign_id)/hashlib.sha256(request_id.encode()).hexdigest()[:24]
         if (directory/'request.json').exists():
             payload['generationConfig']['maxOutputTokens']=read(directory/'request.json')['generationConfig']['maxOutputTokens']
         else:

@@ -1,0 +1,14 @@
+{
+  "time": 1792241931.4984612,
+  "changed_sources": [
+    "mle_rsi/gpt_provider.py",
+    "mle_rsi/policy_recovery.py",
+    "mle_rsi/round_dashboard.py",
+    "mle_rsi/round_viewer.py",
+    "mle_rsi/rounds.py"
+  ],
+  "all_charges_and_reservations_preserved": true,
+  "budget_caps_unchanged": true,
+  "frozen_sha256": "647ee40dc7042ccc2576e76e6cd39f14574f1a08cb670664210424b692519f50",
+  "reconciled_request_count": 5
+}

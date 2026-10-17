@@ -34,7 +34,7 @@ class StagePrompts:
 
     def build(self, *args, **kwargs):
         messages = self.wrapped.build(*args, **kwargs)
-        return [*messages, {'role':'user', 'content':'''NEW STAGE CONTRACT:
+        result = [*messages, {'role':'user', 'content':'''NEW STAGE CONTRACT:
 Declare exactly one top-level literal MLE_RESOURCE = "cpu" or "gpu". Lexical,
 TF-IDF and linear CPU work requests cpu; BGE, torch transformers and GPU neural
 training request gpu. A GPU request receives an exclusive GPU; do not silently
@@ -56,3 +56,9 @@ is a separate retraining experiment; never mix scores from different splits.
 When public gains stagnate, try a materially different model or representation;
 report the algorithm, features and hypothesis instead of only a new branch name.
 '''}]
+        task = kwargs.get('task', args[0] if args else None)
+        if getattr(task, 'benchmark_protocol_id', None) == 'mle-public-kfold-v1':
+            result[-1]['content'] = result[-1]['content'].replace(
+                'Use mle_runtime.record_training_contract(members), with each member a dict of\nname, validation and final; the latter two are identical configuration dicts.',
+                'Use mle_runtime.record_kfold_training_contract(members, fold_training, final_ids)\nas specified in the task contract. Members include three fold configurations plus\nvalidation and final, all identical. Record every fold and the full-data refit;\ndo not overwrite this record with record_training_contract.')
+        return result

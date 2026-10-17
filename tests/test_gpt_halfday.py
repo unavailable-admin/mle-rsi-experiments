@@ -96,3 +96,74 @@ async def test_expired_phase_stops_without_candidates_and_deadline_does_not_rese
     result=await run_task(root,'leaf-classification','development')
     assert result['state']=='stopped' and result['completed_rounds']==0
     assert result['candidate_nodes']==0 and result['selected'] is None
+
+
+@pytest.mark.asyncio
+async def test_connection_setup_retries_without_duplicate_generation(tmp_path, monkeypatch):
+    s=spec();cfg=config(s);monkeypatch.setenv(cfg.api_key_env,'test-key');calls=[]
+    def handler(request):
+        calls.append(request.method)
+        if request.method=='GET':return httpx.Response(200,json={'amount':{'currency':'USD','value':'.01'}})
+        if calls.count('POST')<3:raise httpx.ConnectError('TLS setup failed',request=request)
+        return httpx.Response(200,headers={'x-request-id':'safe-test'},json={'model':cfg.model,
+            'choices':[{'finish_reason':'stop','message':{'content':'ok'}}]})
+    original=httpx.AsyncClient
+    monkeypatch.setattr(httpx,'AsyncClient',lambda **kw:original(transport=httpx.MockTransport(handler),**kw))
+    async def no_wait(delay):pass
+    monkeypatch.setattr('mle_rsi.gpt_provider.asyncio.sleep',no_wait)
+    t=GPTTransport(tmp_path,s,'leaf-classification','development','dev-leaf')
+    result=await t(cfg,[{'role':'user','content':'test'}],'safe','discovery')
+    assert result['usage']['cost_usd']==.01
+    assert calls==['POST','POST','POST','GET']
+    rows=read(tmp_path/'budget.json')['api'];assert len(rows)==1
+    assert rows['dev-leaf:safe']['connection_failures']==2
+
+
+@pytest.mark.asyncio
+async def test_connection_exhaustion_is_resumable_but_read_timeout_is_not(tmp_path, monkeypatch):
+    from mle_rsi.gpt_provider import ConnectionNotSent
+    s=spec();cfg=config(s);monkeypatch.setenv(cfg.api_key_env,'test-key');calls=[]
+    def handler(request):
+        calls.append(request.method)
+        raise httpx.ConnectError('connect failed',request=request)
+    original=httpx.AsyncClient
+    monkeypatch.setattr(httpx,'AsyncClient',lambda **kw:original(transport=httpx.MockTransport(handler),**kw))
+    async def no_wait(delay):pass
+    monkeypatch.setattr('mle_rsi.gpt_provider.asyncio.sleep',no_wait)
+    t=GPTTransport(tmp_path,s,'leaf-classification','development','dev-leaf')
+    args=(cfg,[{'role':'user','content':'test'}],'safe','discovery')
+    for expected in (3,6):
+        with pytest.raises(ConnectionNotSent):await t(*args)
+        assert len(calls)==expected
+        row=read(tmp_path/'budget.json')['api']['dev-leaf:safe']
+        assert row['state']=='not_sent' and 'charged_usd' not in row
+
+
+@pytest.mark.asyncio
+async def test_native_ledger_resumes_proven_unsent_request_once(tmp_path,monkeypatch):
+    from dream_rsi.config import ModelConfig
+    from dream_rsi.storage import CampaignStore, UsageLedger
+    from dream_rsi.llm import LLMClient
+    from mle_rsi.gpt_provider import ConnectionNotSent
+    s=spec();cfg=ModelConfig(provider='openai-compatible',base_url='https://example.invalid',model='gpt-6-sol',
+        api_key_env=s['model']['api_key_env'],max_output_tokens=16384,context_tokens=262144,reasoning_effort='medium')
+    monkeypatch.setenv(cfg.api_key_env,'test-key');calls=[]
+    def handler(request):
+        calls.append(request.method)
+        if request.method=='GET':return httpx.Response(200,json={'amount':{'currency':'USD','value':'.01'}})
+        if calls.count('POST')<=3:raise httpx.ConnectError('TLS setup failed',request=request)
+        return httpx.Response(200,headers={'x-request-id':'one-bill'},json={'model':cfg.model,
+            'choices':[{'finish_reason':'stop','message':{'content':'done'}}],'usage':{'total_tokens':100}})
+    original=httpx.AsyncClient
+    monkeypatch.setattr(httpx,'AsyncClient',lambda **kw:original(transport=httpx.MockTransport(handler),**kw))
+    store=CampaignStore(tmp_path/'campaign');ledger=UsageLedger(store)
+    client=LLMClient(cfg,ledger,transport=GPTTransport(tmp_path,s,'leaf-classification','development','dev-leaf'))
+    messages=[{'role':'user','content':'test'}]
+    with pytest.raises(ConnectionNotSent):await client.generate(messages,'same-request')
+    assert store.get('usage','same-request').status=='not_sent'
+    assert store.get('usage','same-request').cost_usd==0
+    raw,usage=await client.generate(messages,'same-request')
+    assert raw=='done' and usage.status=='completed' and usage.cost_usd==.01
+    assert len(store.list('usage'))==1 and calls==['POST','POST','POST','POST','GET']
+    assert read(tmp_path/'budget.json')['api']['dev-leaf:same-request']['charged_usd']==.01
+    store.close()

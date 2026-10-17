@@ -4,11 +4,15 @@
     "files": {
       "my_rsi/src/dream_rsi/campaign.py": {
         "before": "fb3c2f49dd40954374f460a6133eadabe0c230a175dc84ab6fb8edd476abc0ae",
-        "after": "aaa1a9468b23238ae743870e992fd67eae96ab3c9db20c50f656795b82537cb9"
+        "after": "dd1f1723037f57553b264a77efdb6c30222535c34a3aefe25b5a56f78661070f"
       },
       "my_rsi/src/dream_rsi/counterfactual.py": {
         "before": "21cc7f2f7dbbaec4d665184603fb928d1cf887b3c6c4a2fedaf38edacceafe57",
         "after": "3b895021b218f9578c2844902d015db7440431a27a37f961b1bb974a09924ba4"
+      },
+      "my_rsi/src/dream_rsi/errors.py": {
+        "before": "69aaa9f633c4902555fcd6f44b4a283ceb1312b95834869d3458fbc6e189c743",
+        "after": "c05cbaa13e8e56aa65fc40c01cd3fb51be8e8765f32f0eb944b492bb4855c154"
       },
       "my_rsi/src/dream_rsi/evidence.py": {
         "before": "916d1a39385aaceb12519b9a119f56e0033530563feefe30ec809ef2e597b808",
@@ -28,7 +32,7 @@
       },
       "my_rsi/src/dream_rsi/policy_runtime.py": {
         "before": "7a6585c6493bc62e263021318d20e38d5485ac801008b233a7d27417f495fd55",
-        "after": "695e793261dcbe6ce71b8b2a5f75aae5da9f7fd7d59bfdd28993a495c1abd2e3"
+        "after": "b8a5b7925bb0fd49784e66b43acb11da4fbef6c8390b62884b27c49f649b3634"
       },
       "my_rsi/src/dream_rsi/prompting.py": {
         "before": "7d0d4ee420cb7f4e2743439db51c483fa296041f52fa58d3d7473d1e3464914e",
@@ -37,6 +41,14 @@
       "my_rsi/src/dream_rsi/repair_guard.py": {
         "before": "b0b390a21c7504f95e0248e32586f0bfa7260d9400507a04713548b9764044cf",
         "after": "8d3dbde406975753f82ffee2885bae43a71589bc6ab80b367f5a86e106831b94"
+      },
+      "my_rsi/src/dream_rsi/replay.py": {
+        "before": "3f64b03c63c404f7c95898771f595a15ba20e7f716b5d7e8874fbde538fd4690",
+        "after": "f4e486e17c711c57376dd937ed69ca7a27448b1a999cc02ef81e7936f5bb7ba9"
+      },
+      "my_rsi/tests/test_persistent_replay.py": {
+        "before": "1a98ddd78707121bad8893ae30315daaeb88b6fdb1e00d7e541ccfe58e31a54c",
+        "after": "d0eb784997f050e08d48e48b475ba456187b217aa94a311402b127fb3e22619f"
       }
     }
   },

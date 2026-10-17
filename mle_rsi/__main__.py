@@ -66,6 +66,8 @@ def main():
     if a.command=='init':
         initialize(root,load_spec(a.config),a.mode);print(root);return
     if a.command=='web':
+        from .round_viewer import install
+        install(root)
         from dream_rsi.web.__main__ import main as viewer
         viewer(['--runs-dir',str(root/'campaigns'),'--port',str(a.port)]);return
     if a.command=='status':

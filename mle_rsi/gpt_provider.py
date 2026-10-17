@@ -1,4 +1,4 @@
-"""TeamO GPT chat transport with durable accounting; no automatic POST retry."""
+"""TeamO GPT chat transport with durable accounting; retries only proven pre-send connection failures."""
 import asyncio
 import hashlib
 import json
@@ -13,6 +13,11 @@ import httpx
 from .common import Budget, BudgetExhausted, LimitReached, read, write
 
 
+class ConnectionNotSent(RuntimeError):
+    """Connection setup failed before the HTTP request could be transmitted."""
+    definitely_not_sent = True
+
+
 class GPTTransport:
     def __init__(self, root, spec, task, phase, campaign_id):
         self.root, self.spec, self.task, self.phase, self.campaign_id = Path(root), spec, task, phase, campaign_id
@@ -25,8 +30,10 @@ class GPTTransport:
 
     async def _call(self, config, messages, request_id, role):
         ident = f'{self.campaign_id}:{request_id}'
-        if self.spec.get('stage2'):ident='stage2:'+ident
-        directory = self.root/'api'/('stage2-'+self.campaign_id if self.spec.get('stage2') else self.campaign_id)/hashlib.sha256(request_id.encode()).hexdigest()[:24]
+        from .common import request_namespace
+        namespace = request_namespace(self.spec, self.task)
+        if namespace: ident=namespace+':'+ident
+        directory = self.root/'api'/(namespace+'-'+self.campaign_id if namespace else self.campaign_id)/hashlib.sha256(request_id.encode()).hexdigest()[:24]
         payload = {'model': config.model, 'messages': messages, 'reasoning_effort': config.reasoning_effort,
                    'max_completion_tokens': config.max_output_tokens, 'stream': False}
         pricing = self.spec['model']['reservation_rates'][config.model]
@@ -60,16 +67,17 @@ class GPTTransport:
             raise RuntimeError('Request ID reused with different input')
         if old['state'] == 'completed':
             return read(directory/'adapted.json')
-        if (directory/'request.json').exists():
+        if (directory/'request.json').exists() and old['state'] != 'not_sent':
             raise LimitReached('Incomplete prior request: never resend automatically')
         write(directory/'request.json', payload)
+        self.budget.update_api(ident, state='pending')
         base = self.spec['model']['base_url'].rstrip('/')
         provider_id = None
         started = time.monotonic()
         try:
-            async with httpx.AsyncClient(timeout=600, trust_env=self.spec['model'].get('trust_env', True),
+            async with httpx.AsyncClient(timeout=httpx.Timeout(600, connect=20, pool=20), trust_env=self.spec['model'].get('trust_env', True),
                     headers={'Authorization': 'Bearer ' + os.environ[config.api_key_env]}) as client:
-                response = await client.post(base+'/v1/chat/completions', json=payload)
+                response = await self._post_connected(client, base+'/v1/chat/completions', payload, directory, ident)
                 provider_id = response.headers.get('x-request-id') or response.headers.get('request-id')
                 self.budget.update_api(ident, provider_request_id=provider_id, role=role,
                                        response_seconds=time.monotonic()-started, http_status=response.status_code)
@@ -118,7 +126,28 @@ class GPTTransport:
         except BaseException as exc:
             with self.budget.state() as ledger:
                 row = ledger['api'][ident]
-                if row['state'] == 'pending':
+                if isinstance(exc, ConnectionNotSent):
+                    row.update(state='not_sent', provider_request_id=None)
+                elif row['state'] == 'pending':
                     row.update(state='uncertain', provider_request_id=provider_id)
                 row['error_type'] = type(exc).__name__
             raise
+
+    async def _post_connected(self, client, url, payload, directory, ident):
+        evidence = directory/'connection-attempts.json'
+        attempts = read(evidence) if evidence.exists() else []
+        for index in range(3):
+            try:
+                return await client.post(url, json=payload)
+            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout) as exc:
+                attempts.append({'time': time.time(), 'error_type': type(exc).__name__,
+                                 'request_not_sent': True})
+                write(evidence, attempts)
+                self.budget.update_api(ident, connection_failures=len(attempts))
+                control = self.root/'control.json'
+                stopping = control.exists() and read(control).get('action') in ('stop', 'pause')
+                if index == 2 or stopping:
+                    raise ConnectionNotSent(f'Connection setup failed after {index+1} attempts; request not sent') from exc
+                await asyncio.sleep(2**index)
+                if control.exists() and read(control).get('action') in ('stop', 'pause'):
+                    raise ConnectionNotSent('Stopped during connection backoff; request not sent') from exc

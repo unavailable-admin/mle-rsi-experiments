@@ -1,0 +1,40 @@
+{
+  "state": "verified_before_launch",
+  "budget_sha256": "4c8f3f214cd870e708a100a2c9e18581e9e1c143e5df7df848ac94e9c31b2b4d",
+  "budget_caps_unchanged": true,
+  "deadline_unchanged": true,
+  "retired_count": 14,
+  "candidate_counts": {
+    "aerial-cactus-identification": 0,
+    "aptos2019-blindness-detection": 400,
+    "denoising-dirty-documents": 100,
+    "detecting-insults-in-social-commentary": 100,
+    "dog-breed-identification": 195,
+    "dogs-vs-cats-redux-kernels-edition": 100,
+    "histopathologic-cancer-detection": 100,
+    "jigsaw-toxic-comment-classification-challenge": 275,
+    "leaf-classification": 100,
+    "mlsp-2013-birds": 100,
+    "new-york-city-taxi-fare-prediction": 375,
+    "nomad2018-predict-transparent-conductors": 100,
+    "plant-pathology-2020-fgvc7": 100,
+    "random-acts-of-pizza": 100,
+    "ranzcr-clip-catheter-line-classification": 275,
+    "siim-isic-melanoma-classification": 275,
+    "spooky-author-identification": 100,
+    "tabular-playground-series-dec-2021": 100,
+    "tabular-playground-series-may-2022": 300,
+    "text-normalization-challenge-english-language": 100,
+    "text-normalization-challenge-russian-language": 100,
+    "the-icml-2013-whale-challenge-right-whale-redux": 100
+  },
+  "cactus_validation_seed": 20261017,
+  "cactus_manifest_sha256": "8b63f402ac57609866e71683864387ff8edc60a58358b513f897712441920f26",
+  "preflight": {
+    "host": "10-118-92-147",
+    "assets_verified": true,
+    "gpu_mapping_verified": true,
+    "paid_calls": 0,
+    "training_started": false
+  }
+}

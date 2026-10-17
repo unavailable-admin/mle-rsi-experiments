@@ -188,3 +188,125 @@ def test_dashboard_reuses_readonly_stores_without_stale_control(tmp_path):
     assert report(root,stores)['control']['action']=='pause'
     control(root,'resume')
     assert report(root,stores)['control']['action']=='resume'
+
+
+@pytest.mark.asyncio
+async def test_independent_rounds_unequal_starts_slow_task_and_failure(tmp_path, monkeypatch):
+    """R7 must advance twice while R11 is still running; R15 failure is isolated."""
+    from types import SimpleNamespace
+    from mle_rsi import rounds
+    tasks = ['dog-breed-identification', 'aerial-cactus-identification', 'new-york-city-taxi-fare-prediction']
+    root = tmp_path/'run'; s = config()
+    s['development_tasks'] = s['experiment_tasks'] = tasks
+    initialize(root, s, 'mock')
+    starts = dict(zip(tasks, [7, 11, 15]))
+    calls = []; active = set(); fast_advanced = asyncio.Event()
+    class FakeCampaign:
+        def __init__(self, task):
+            self.task = task; self.completed = starts[task]
+            self.config = SimpleNamespace(campaign_id=task)
+            self.checkpoints = SimpleNamespace(load=lambda _: {'completed_rounds': self.completed})
+            self.scheduler = SimpleNamespace()
+            self.store = SimpleNamespace(close=lambda: None)
+        async def bootstrap(self): pass
+        async def run_round(self, number):
+            assert self.task not in active
+            active.add(self.task); calls.append((self.task, number))
+            try:
+                if self.task == tasks[1]:
+                    await asyncio.wait_for(fast_advanced.wait(), 5)
+                if self.task == tasks[2]:
+                    raise RuntimeError('isolated failure')
+                if self.task == tasks[0] and number == 9:
+                    fast_advanced.set()
+                self.completed = number
+                if self.task == tasks[0] and number == 10:
+                    control(root, 'stop')
+            finally:
+                active.remove(self.task)
+    monkeypatch.setattr(rounds, 'campaign', lambda root, task, *a, **kw: FakeCampaign(task))
+    monkeypatch.setattr(rounds, 'round_slot_evidence', lambda *a: {})
+    def exported(root, task, store, number):
+        out = root/'rounds'/f'{number:04d}'/task
+        write(out/'official-result.json', {'state': 'mock'})
+        return out
+    monkeypatch.setattr(rounds, 'export_round', exported)
+    monkeypatch.setattr('mle_rsi.round_dashboard.report', lambda *a: {})
+    await asyncio.wait_for(run(root), 10)
+    assert (tasks[0], 8) in calls and (tasks[0], 9) in calls
+    assert (tasks[1], 12) in calls and (tasks[2], 16) in calls
+    assert calls.count((tasks[2], 16)) == 1
+    assert read(root/'task-status'/f'{tasks[2]}.json')['state'] == 'blocked'
+    assert read(root/'round-status.json')['state'] == 'stopped'
+
+
+def test_native_viewer_distinguishes_queued_retired_and_dead_controller(tmp_path):
+    from mle_rsi.common import lock
+    from mle_rsi.round_viewer import task_view_state
+    write(tmp_path/'round-status.json', {'state': 'running'})
+    write(tmp_path/'task-status/leaf.json', {'state': 'queued'})
+    assert task_view_state(tmp_path, 'leaf')['state'] == 'stopped'
+    with lock(tmp_path/'controller'):
+        assert task_view_state(tmp_path, 'leaf') == {'state': 'running', 'phase': '等待调度'}
+        write(tmp_path/'round-status.json', {'state': 'paused'})
+        assert task_view_state(tmp_path, 'leaf')['phase'] == '已暂停'
+    write(tmp_path/'task-status/leaf.json', {'state': 'retired_medal'})
+    assert task_view_state(tmp_path, 'leaf') == {'state': 'completed', 'phase': '已获牌封存'}
+
+
+def test_dashboard_node_cache_tracks_updates_and_deletions(tmp_path, monkeypatch):
+    from dream_rsi.storage import CampaignStore
+    from mle_rsi.round_dashboard import dashboard_nodes
+    store = CampaignStore(tmp_path/'cache')
+    store.put('node','one',{'value':1})
+    calls=[]; original=store.codec.decode_many
+    def decode(values):
+        calls.append(len(values))
+        return original(values)
+    monkeypatch.setattr(store.codec,'decode_many',decode)
+    assert dashboard_nodes(store)==[{'value':1}]
+    assert dashboard_nodes(store)==[{'value':1}]
+    assert calls==[1,0]
+    store.put('node','one',{'value':2});store.put('node','two',{'value':3})
+    assert dashboard_nodes(store)==[{'value':2},{'value':3}]
+    with store.connection:store.connection.execute("DELETE FROM records WHERE key='one'")
+    assert dashboard_nodes(store)==[{'value':3}]
+    store.close()
+
+
+@pytest.mark.asyncio
+async def test_unsent_connection_failure_auto_resumes_same_round(tmp_path,monkeypatch):
+    from dream_rsi.campaign import Campaign
+    from mle_rsi.gpt_provider import ConnectionNotSent
+    import mle_rsi.rounds as rounds
+    s=config();s['development_tasks']=s['experiment_tasks']=['leaf-classification']
+    root=tmp_path/'run';initialize(root,s,'mock')
+    original=Campaign.run_round;seen=[]
+    async def flaky(self,number):
+        seen.append(number)
+        if len(seen)==1:raise ConnectionNotSent('TLS setup failed')
+        return await original(self,number)
+    monkeypatch.setattr(Campaign,'run_round',flaky)
+    monkeypatch.setattr(rounds,'connection_retry_delay',lambda _:0)
+    await run(root,through_round=1)
+    assert seen==[1,1]
+    row=report(root)['rows'][0]
+    assert row['completed_rounds']==1 and row['candidates']==25
+    assert read(root/'auto-recovery/leaf-classification.json')['failures']==1
+
+
+@pytest.mark.asyncio
+async def test_connection_recovery_has_finite_circuit_breaker(tmp_path,monkeypatch):
+    from dream_rsi.campaign import Campaign
+    from mle_rsi.gpt_provider import ConnectionNotSent
+    import mle_rsi.rounds as rounds
+    s=config();s['development_tasks']=s['experiment_tasks']=['leaf-classification']
+    root=tmp_path/'run';initialize(root,s,'mock');calls=[]
+    async def fail(self,number):
+        calls.append(number)
+        raise ConnectionNotSent('persistent connect failure')
+    monkeypatch.setattr(Campaign,'run_round',fail)
+    monkeypatch.setattr(rounds,'connection_retry_delay',lambda _:0)
+    await run(root,through_round=1)
+    assert len(calls)==6
+    assert read(root/'round-status.json')['state']=='blocked'

@@ -4,6 +4,7 @@ from dream_rsi.errors import PolicyError
 from dream_rsi.models import BatchDecision
 from dream_rsi.tree import BatchValidator
 from dataclasses import replace
+import json
 
 
 def stagnation_draft(decision, view, window=50):
@@ -24,17 +25,31 @@ class RecoveringPolicyWorker(PolicyWorker):
         self.store,self.tree_id=store,tree_id
         self.failure=None
         self.index=0
+        # Read only the round journal, not all historical sources/arrays again.
+        encoded = store._encoded_record('tree', tree_id)
+        while isinstance(encoded, dict) and '$ref' in encoded:
+            encoded = json.loads(store.artifacts.get(encoded['$ref']))
+        self.committed_steps = store.codec.decode(encoded['rounds']) if encoded and 'rounds' in encoded else ()
 
     async def open(self):
         try:await super().open()
         except PolicyError as exc:self.failure=str(exc)
 
     async def decide(self, view, state=None):
-        key=f'{self.tree_id}:{self.index}'
+        key=f'{self.tree_id}:{view.round_index}'
         self.index+=1
+        historical = next((step for step in self.committed_steps if step.round_index == view.round_index), None)
+        def replay_committed():
+            decision = BatchDecision(historical.parent_ids, {}, historical.reason, host_guarded=True)
+            BatchValidator.validate(decision, view)
+            self.store.put('policy_replay_recovery', key, {'error': self.failure,
+                'decision': decision, 'rule': 'Replay immutable committed parents after policy process failure; future batches use fallback'})
+            return decision
         saved=self.store.get('policy_fallback',key)
         if saved:
             self.failure=saved['error']
+            if historical is not None:
+                return replay_committed()
             decision=saved['decision']
             BatchValidator.validate(decision,view)
             return decision
@@ -44,6 +59,8 @@ class RecoveringPolicyWorker(PolicyWorker):
                 BatchValidator.validate(decision,view)
                 return decision
             except PolicyError as exc:self.failure=str(exc)
+        if historical is not None:
+            return replay_committed()
         nodes={n['node_id']:n for n in view.revealed_nodes}
         eligible=list(view.eligible_parent_ids)
         ranked=sorted(eligible,key=lambda k:(-float(nodes.get(k,{}).get('score') or 0),k))

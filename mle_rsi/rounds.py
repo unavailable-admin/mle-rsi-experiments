@@ -1,4 +1,4 @@
-"""Exploratory Lite22 waves: persistent public search, private reports between rounds."""
+"""Independent task rounds: persistent public search, private reports between rounds."""
 import argparse
 import asyncio
 from contextlib import ExitStack
@@ -176,6 +176,10 @@ def verify_seal(out):
             raise RuntimeError('Checkpoint changed: '+str(out/name))
 
 
+def connection_retry_delay(failures):
+    return min(300, 30 * 2**(failures-1))
+
+
 def unresolved(root, task):
     if not (root/'budget.json').exists():
         return False
@@ -232,6 +236,7 @@ async def run(root, through_round=None):
     # Bound policy subprocess load; all tasks still share the execution queue.
     task_gate = asyncio.Semaphore(spec['round_robin'].get('active_tasks', 8))
     campaigns = {}
+    in_flight = {}
     blocked = {}
     timing = root/'round-timing.json'
     if not timing.exists():
@@ -261,6 +266,12 @@ async def run(root, through_round=None):
     async def one(task, number):
         c = campaigns[task]
         async with task_gate:
+            retry_path = root/'auto-recovery'/f'{task}.json'
+            if retry_path.exists():
+                delay = max(0, read(retry_path).get('next_retry_at', 0)-time.time())
+                while delay > 0 and action(root) not in ('pause', 'stop'):
+                    await asyncio.sleep(min(delay, 1))
+                    delay = max(0, read(retry_path).get('next_retry_at', 0)-time.time())
             # A pause does not launch another task's not-yet-started round.
             if action(root) in ('pause', 'stop') or time.time() >= deadline:
                 return
@@ -292,6 +303,15 @@ async def run(root, through_round=None):
             except RoundPaused:
                 status(root, task, 'paused', round=number)
             except Exception as exc:
+                from .gpt_provider import ConnectionNotSent
+                if isinstance(exc, ConnectionNotSent) and not unresolved(root, task):
+                    prior = read(retry_path) if retry_path.exists() else {}
+                    count = (prior.get('failures', 0) if prior.get('round') == number else 0) + 1
+                    if count <= 5:
+                        wait = connection_retry_delay(count)
+                        write(retry_path, {'round': number, 'failures': count, 'next_retry_at': time.time()+wait, 'reason': str(exc)})
+                        status(root, task, 'retry_wait', round=number, reason=f'Connection not sent; automatic retry in {wait}s ({count}/5)')
+                        return
                 reason = f'{type(exc).__name__}: {exc}'
                 blocked[task] = reason
                 from .common import BudgetExhausted
@@ -334,6 +354,7 @@ async def run(root, through_round=None):
             c.scheduler.after_batch = after_batch
             campaigns[task] = c
             await c.bootstrap()
+            status(root, task, 'queued', round=c.checkpoints.load(c.config.campaign_id)['completed_rounds']+1)
         if spec.get('offline_max'):
             # Finish the initial refresh wave before any new online work. No
             # candidate/grading/private inputs enter this refresh stage.
@@ -354,48 +375,68 @@ async def run(root, through_round=None):
             overall('offline_refresh',round=spec['offline_max']['boundary'])
             await asyncio.gather(*(initial_refresh(t,c) for t,c in campaigns.items()))
         while True:
-            if action(root) == 'stop':
-                overall('stopped', blocked=blocked)
-                break
-            if time.time() >= deadline:
-                overall('budget_stop', reason='Wall-clock window expired; no new rounds', blocked=blocked)
-                break
-            if action(root) == 'pause':
-                overall('paused', blocked=blocked)
-                await asyncio.sleep(2)
-                continue
-            retired = retire_winners(root, spec, record['mode'])
-            for task,entry in retired.items():
-                status(root,task,'retired_medal',round=entry['round'])
-            if len(retired)==len(tasks):
-                overall('all_medaled', retired=len(retired))
-                break
-            active = [t for t in tasks if t in campaigns and t not in blocked and t not in retired]
-            if not active:
-                exhausted = [t for t in blocked if read(root/'task-status'/f'{t}.json').get('state')=='budget_exhausted']
-                overall('budget_exhausted' if len(exhausted)==len(blocked) else 'blocked', blocked=blocked, budget_exhausted=exhausted)
-                break
-            completed = {t: campaigns[t].checkpoints.load(campaigns[t].config.campaign_id)['completed_rounds'] for t in active}
-            pending_reports = [t for t in active if any(
-                not (root/'rounds'/f'{n:04d}'/t/'official-result.json').exists()
-                for n in range(1, completed[t]+1))]
-            if pending_reports:
-                await asyncio.gather(*(one(t, completed[t]) for t in pending_reports))
-                continue
-            number = min(completed.values()) + 1
-            if through_round is not None and number > through_round:
-                overall('target_reached', through_round=through_round, blocked=blocked)
-                break
-            # Catch up lagging tasks before advancing the next wave.
-            eligible = [t for t in active if completed[t] < number]
-            overall('running', round=number, blocked=blocked)
-            await asyncio.gather(*(one(t, number) for t in eligible))
-            if action(root) in ('pause', 'stop'):
-                continue
-            # Fixed-denominator wave summary is derived by the report, never used by search.
-            from .round_dashboard import report
-            write(root/'round-report.json', report(root))
+            # Each task owns its next round. No cross-task round-number barrier.
+            # Completed futures are observed before making another admission.
+            for task, future in list(in_flight.items()):
+                if future.done():
+                    await future
+                    del in_flight[task]
+            requested = action(root)
+            expired = time.time() >= deadline
+            if requested in ('pause', 'stop') or expired:
+                if not in_flight:
+                    if requested == 'stop':
+                        overall('stopped', blocked=blocked)
+                        break
+                    if expired:
+                        overall('budget_stop', reason='Wall-clock window expired; no new rounds', blocked=blocked)
+                        break
+                    overall('paused', blocked=blocked)
+                    await asyncio.sleep(2)
+                    continue
+            else:
+                retired = retire_winners(root, spec, record['mode'])
+                for task, entry in retired.items():
+                    status(root, task, 'retired_medal', round=entry['round'])
+                if len(retired) == len(tasks):
+                    overall('all_medaled', retired=len(retired))
+                    break
+                active = [t for t in campaigns if t not in blocked and t not in retired]
+                targets = {}
+                for task in active:
+                    if task in in_flight:
+                        continue
+                    completed = campaigns[task].checkpoints.load(campaigns[task].config.campaign_id)['completed_rounds']
+                    pending_reports = any(not (root/'rounds'/f'{n:04d}'/task/'official-result.json').exists()
+                                          for n in range(1, completed+1))
+                    if pending_reports:
+                        targets[task] = completed
+                    elif through_round is None or completed < through_round:
+                        targets[task] = completed + 1
+                for task, number in targets.items():
+                    retry_path = root/'auto-recovery'/f'{task}.json'
+                    retrying = retry_path.exists() and read(retry_path).get('next_retry_at', 0) > time.time()
+                    status(root, task, 'retry_wait' if retrying else 'queued', round=number)
+                    in_flight[task] = asyncio.create_task(one(task, number))
+                if not in_flight:
+                    if active:
+                        overall('target_reached', through_round=through_round, blocked=blocked)
+                    else:
+                        exhausted = [t for t in blocked if read(root/'task-status'/f'{t}.json').get('state')=='budget_exhausted']
+                        overall('budget_exhausted' if len(exhausted)==len(blocked) else 'blocked',
+                                blocked=blocked, budget_exhausted=exhausted)
+                    break
+                overall('running', scheduling='independent', blocked=blocked)
+            # A fast task may advance as soon as its own round/report finishes;
+            # shared task, batch, API and resource gates still limit concurrency.
+            await asyncio.wait(in_flight.values(), return_when=asyncio.FIRST_COMPLETED)
+        from .round_dashboard import report
+        write(root/'round-report.json', report(root))
     finally:
+        for future in in_flight.values():
+            if not future.done():
+                future.cancel()
+        await asyncio.gather(*in_flight.values(), return_exceptions=True)
         for c in campaigns.values():
             c.store.close()
         sandbox.PROCESS_CLEANUP_TIMEOUT_S = previous_cleanup_grace

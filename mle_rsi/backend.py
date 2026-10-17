@@ -176,8 +176,13 @@ class MLEBackend:
         if self.fixed:
             shown={k:v for k,v in self.validation.items() if k not in ('file_hashes','data_overrides')}
             extra='\nFIXED VALIDATION MANIFEST:\n'+json.dumps(shown)+'\nACTUAL RUNTIME INVENTORY:\n'+json.dumps(read(Path(root)/'runtime/inventory.json'))
+        self.kfold = bool(self.validation and self.validation.get('validation_protocol') == 'stratified_kfold')
+        self.contract = V2_CONTRACT if self.fixed else CONTRACT
+        if self.kfold:
+            from .kfold import CONTRACT as KFOLD_CONTRACT
+            self.contract = COMMON_CONTRACT + KFOLD_CONTRACT
         self.task = TaskSpec(task_id=task, objective_text=(self.public/'description.md').read_text() + '\n' + preview(self.public)+extra,
-                            candidate_contract=V2_CONTRACT if self.fixed else CONTRACT, benchmark_protocol_id='mle-public-v2' if self.fixed else 'mle-public-v1',
+                            candidate_contract=self.contract, benchmark_protocol_id=('mle-public-kfold-v1' if self.kfold else 'mle-public-v2') if self.fixed else 'mle-public-v1',
                             allowed_language='python', allowed_libraries=('installed-ML-environment',),
                             evaluation_criteria={'metric': self.metric, 'score': {'direction': 'higher_is_better',
                                 'definition': self.metric['definition']},
@@ -195,7 +200,7 @@ class MLEBackend:
 
     def fingerprint(self):
         return {'benchmark':'mle', 'task':self.task_id, 'metric':self.metric, 'phase':self.phase,
-                'description_sha256':sha(self.public/'description.md'), 'contract':digest(V2_CONTRACT if self.fixed else CONTRACT),
+                'description_sha256':sha(self.public/'description.md'), 'contract':digest(self.contract),
                 'validation_manifest':sha(self.prepared/'manifest.json') if self.fixed else None,
                 'execution':self.spec.get('continuation_execution_fingerprint', self.spec['execution']), 'mock':self.mock}
 
@@ -252,7 +257,9 @@ class MLEBackend:
     async def _evaluate(self, artifact, batch):
         batch = batch() if callable(batch) else batch
         attempt = batch['attempt_id']
-        directory = self.store.root / 'executions' / (('stage2-' if self.spec.get('stage2') else '') + attempt.replace(':','-'))
+        from .common import request_namespace
+        namespace = request_namespace(self.spec, self.task_id)
+        directory = self.store.root / 'executions' / ((namespace+'-' if namespace else '') + attempt.replace(':','-'))
         saved = directory / 'assessment.json'
         if saved.exists():
             record = read(saved)
@@ -282,7 +289,7 @@ class MLEBackend:
                 'validation_metric':self.metric['name'],'higher_is_better':self.metric['higher_is_better'],
                 'budget':{'wall_seconds':self.spec['execution']['candidate_timeout_seconds'],
                           'cpu_cores':len(self.spec['execution']['cpu_ids']),'memory_gib':32}}
-        if self.fixed:task.update(validation_manifest='/validation/manifest.json',runtime_inventory='/runtime/inventory.json',protocol_version=2)
+        if self.fixed:task.update(validation_manifest='/validation/manifest.json',runtime_inventory='/runtime/inventory.json',protocol_version=3 if self.kfold else 2)
         write(directory/'task.json', task)
         write(directory/'request.json', dict(task=self.task_id, root=str(self.root), phase=self.phase,
                                            directory=str(directory), spec=self.spec))
@@ -363,6 +370,10 @@ class MLEBackend:
                     'validation_score':independent['validation_score'],'n_train':independent['n_train'],
                     'n_validation':independent['n_validation'],'score_source':'host-recomputed'}
                 metric.update(independent.get('probability_diagnostics',{}))
+                if independent.get('cross_validation'):
+                    metric['validation_protocol'] = 'stratified_kfold_mean_auc'
+                    metric['fold_auc'] = independent['cross_validation']['fold_auc']
+                    metric['fold_auc_std'] = independent['cross_validation']['fold_auc_std']
                 from .diversity import record_prediction_fingerprints
                 matches=record_prediction_fingerprints(self.store,attempt,independent.get('prediction_fingerprints',{}))
                 diagnostics['prediction_duplicate_of']=matches

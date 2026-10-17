@@ -1,6 +1,6 @@
 # Dream-RSI × MLE-bench
 
-**2026-10-17 最新交接入口：[HANDOFF.md](HANDOFF.md)。后续统一在本仓库的 `bug-fix` 分支开发；两个实验当前均为停止状态，待办不等于已实施。**
+**2026-10-17 最新交接入口：[HANDOFF.md](HANDOFF.md)。后续统一在本仓库的 `bug-fix` 分支开发；最新实验采用逐题独立续跑，仅 Cactus 从 R1 改用固定三折验证；运行状态以交接文档和实验网页为准。**
 
 混合调度、获牌退出、跨机器安装和手动切换入口见 [新调度说明](docs/mixed-scheduling-medal-retirement.md)。
 

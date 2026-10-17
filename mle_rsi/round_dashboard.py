@@ -13,6 +13,18 @@ from .__main__ import budget_summary
 from dream_rsi.storage import CampaignStore
 
 
+def dashboard_nodes(store):
+    """Reuse decoded immutable records; still observe inserts, updates and deletes."""
+    with store.lock:
+        rows = store.connection.execute("SELECT key,payload FROM records WHERE kind='node' ORDER BY key").fetchall()
+    previous = getattr(store, '_dashboard_nodes', {})
+    changed = [(key, payload) for key, payload in rows if key not in previous or previous[key][0] != payload]
+    decoded = store.codec.decode_many([json.loads(payload) for _, payload in changed])
+    previous.update({key: (payload, node) for (key, payload), node in zip(changed, decoded)})
+    store._dashboard_nodes = {key: previous[key] for key, _ in rows}
+    return [store._dashboard_nodes[key][1] for key, _ in rows]
+
+
 def report(root, stores=None):
     record = read(root/'frozen-config.json')
     spec = record['spec']
@@ -38,7 +50,7 @@ def report(root, stores=None):
                 cp = store.get('checkpoint','active') or {}
                 row['completed_rounds'] = cp.get('completed_rounds', 0)
                 row['phase'] = cp.get('phase')
-                nodes = sorted((n for _,n in store.list('node')), key=lambda n:n.created_order)
+                nodes = sorted(dashboard_nodes(store), key=lambda n:n.created_order)
                 row['candidates'] = len(nodes)
                 row['valid'] = sum(n.evaluation.valid for n in nodes)
                 row['unique_submissions'] = len({n.evaluation.diagnostics.get('submission_sha256') for n in nodes
@@ -131,13 +143,13 @@ PAGE = '''<!doctype html><html lang="zh"><meta charset="utf-8"><meta name="viewp
 <p class="small">暂停不再接收新批次，已接收批次及进行中的策略更新、评分完成后显示已暂停。继续仅对仍在线的控制器生效。每 15 秒刷新。</p>
 <div class="cards"><article><div>控制器</div><div id="state" class="big">读取中</div></article><article><div>累计保留得牌 / 全部题目</div><div id="medals" class="big">—</div><div id="coverage" class="small"></div></article><article><div>候选 / 有效候选</div><div id="candidates" class="big">—</div></article><article><div>API 已结算 / 上限</div><div id="budget" class="big">—</div><div id="reserved" class="small"></div></article></div>
 <article><h2>获牌退出与剩余目标</h2><p id="retirement"></p></article><article><h2>资源与排队</h2><p id="resources"></p><div id="lanes"></div></article>
-<article><h2>逐轮覆盖与得牌率</h2><p class="small">获牌率分母始终包含全部任务。搜索和新评测分母仅包含本轮仍在攻的任务，冻结获牌题单独沿用。后续轮次计入此前冻结获牌提交；保留成绩不代表本轮重新评测。mock 不显示真实得牌率。</p><div class="scroll"><table><thead><tr><th>轮次</th><th>完成搜索</th><th>已评测</th><th>得牌</th><th>得牌率</th><th>覆盖状态</th></tr></thead><tbody id="rounds"></tbody></table></div></article>
+<article><h2>逐轮覆盖与得牌率</h2><p class="small">各题独立推进，轮次是题内累计编号，不代表同时完成的一轮。获牌率分母始终包含全部任务。搜索和新评测分母仅包含本轮仍在攻的任务，冻结获牌题单独沿用。后续轮次计入此前冻结获牌提交；保留成绩不代表本轮重新评测。mock 不显示真实得牌率。</p><div class="scroll"><table><thead><tr><th>轮次</th><th>完成搜索</th><th>已评测</th><th>得牌</th><th>得牌率</th><th>覆盖状态</th></tr></thead><tbody id="rounds"></tbody></table></div></article>
 <article><h2>每题健康与进度</h2><div class="scroll"><table><thead><tr><th>题目</th><th>状态 / 轮次</th><th>候选 / 有效</th><th>Public 最优</th><th>Private 最新轮</th><th>超时 / 无改善候选</th><th>API / 执行小时</th><th>诊断</th></tr></thead><tbody id="tasks"></tbody></table></div></article>
 <article><h2>学习曲线</h2><select id="pick" onchange="draw()"></select><div id="plot"></div><p class="small">蓝绿：public 历史最优；橙：每轮固定 checkpoint 的 private 成绩。横轴为候选数，各题指标不同，public/private 不应等同。solver 始终按 public 选择。</p></article>
 <p><a id="utilization" target="_blank" rel="noopener">CPU / GPU 利用率与队列监控</a></p><p id="note"></p><p id="stamp" class="small"></p>
 <script>
 const TOKEN=__TOKEN__; let data=null, refreshing=false; const $=id=>document.getElementById(id); const esc=x=>String(x??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const num=x=>x==null?'—':Number(x).toFixed(5); const labels={retired_medal:'已获牌冻结',all_medaled:'全部获牌完成',preparing:'准备任务',ready:'待启动',running:'运行中',paused:'已暂停',stopped:'已停止',blocked:'需检查',budget_exhausted:'额度耗尽',budget_stop:'预算停止',target_reached:'目标轮完成',waiting_for_resources:'资源未就绪',searching:'搜索中',grading:'评分中',round_complete:'本轮完成'};
+const num=x=>x==null?'—':Number(x).toFixed(5); const labels={retry_wait:'连接失败，等待自动重试',retired_medal:'已获牌冻结',all_medaled:'全部获牌完成',preparing:'准备任务',queued:'等待调度',ready:'待启动',running:'运行中',paused:'已暂停',stopped:'已停止',blocked:'需检查',budget_exhausted:'额度耗尽',budget_stop:'预算停止',target_reached:'目标轮完成',waiting_for_resources:'资源未就绪',searching:'搜索中',grading:'评分中',round_complete:'本轮完成'};
 $('utilization').href=location.protocol+'//'+location.hostname+':'+(Number(location.port||18770)+2)+'/';
 $('tree').href=location.protocol+'//'+location.hostname+':'+(Number(location.port||18770)+1)+'/';
 async function control(action){if(!confirm(action==='pause'?'请求暂停？已接收批次完成后暂停，不强杀训练或 API 请求。':'继续按原冻结配置和剩余预算推进？'))return;try{const r=await fetch('/control',{method:'POST',headers:{'Content-Type':'application/json','X-Control-Token':TOKEN},body:JSON.stringify({action})});const result=await r.json();if(!r.ok)throw Error(result.error||r.status);$('message').textContent=action==='pause'?'已请求暂停，等待已接收批次收尾。':'已请求继续。';await refresh();}catch(e){$('message').textContent='控制失败：'+e.message;}}

@@ -46,10 +46,10 @@ def launch(root, ports=(19070,19071,19072), controller=True):
     http=urllib.request.build_opener(urllib.request.ProxyHandler({}))
     for attempt in range(20):
         try:
-            data=json.load(http.open(f'http://127.0.0.1:{ports[0]}/report.json',timeout=10))
+            data=json.load(http.open(f'http://127.0.0.1:{ports[0]}/report.json',timeout=30))
             assert data['run_dir']==str(root)
-            assert http.open(f'http://127.0.0.1:{ports[1]}/',timeout=10).status==200
-            data=json.load(http.open(f'http://127.0.0.1:{ports[2]}/metrics.json',timeout=10))
+            assert http.open(f'http://127.0.0.1:{ports[1]}/',timeout=30).status==200
+            data=json.load(http.open(f'http://127.0.0.1:{ports[2]}/metrics.json',timeout=30))
             assert data['run_dir']==str(root)
             break
         except Exception:

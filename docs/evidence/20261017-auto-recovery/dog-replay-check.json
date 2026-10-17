@@ -1,0 +1,54 @@
+{
+  "task": "dog-breed-identification",
+  "tree": "tree-0008",
+  "preserved_nodes": 195,
+  "checks": [
+    {
+      "batch": 0,
+      "parents": [
+        "n175",
+        "n175",
+        "n175",
+        "n175",
+        "n170"
+      ],
+      "reused_committed": true
+    },
+    {
+      "batch": 1,
+      "parents": [
+        "n180",
+        "n173",
+        "n173",
+        "n173",
+        "n170"
+      ],
+      "reused_committed": true
+    },
+    {
+      "batch": 2,
+      "parents": [
+        "n183",
+        "n185",
+        "n185",
+        "n185",
+        "n170"
+      ],
+      "reused_committed": true
+    },
+    {
+      "batch": 3,
+      "parents": [
+        "n179",
+        "n187",
+        "n187",
+        "n187",
+        "n185"
+      ],
+      "reused_committed": true
+    }
+  ],
+  "audit_records": 4,
+  "api_calls": 0,
+  "training": false
+}

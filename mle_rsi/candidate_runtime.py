@@ -38,9 +38,13 @@ def split_table():
     return _split.copy()
 
 
-def validation_mask(ids):
+def validation_mask(ids, fold=None):
     import numpy as np
     ids = canonical_ids(ids)
+    if manifest().get('validation_protocol') == 'stratified_kfold':
+        if type(fold) is not int or fold not in range(manifest()['n_splits']):
+            raise ValueError('Three-fold protocol requires fold=0, 1, or 2')
+        return fold_assignments(ids) == fold
     if manifest()['metric']=='text_accuracy':
         return np.asarray([int(x.split('_')[0])%5==0 for x in ids])
     split = split_table();known=set(split['id'])
@@ -50,13 +54,13 @@ def validation_mask(ids):
     return np.asarray([x in valid for x in ids])
 
 
-def split_indices(ids):
+def split_indices(ids, fold=None):
     import numpy as np
-    mask=validation_mask(ids)
+    mask=validation_mask(ids, fold=fold)
     return np.flatnonzero(~mask),np.flatnonzero(mask)
 
 
-def inner_split(ids, labels=None, validation_fraction=.2):
+def inner_split(ids, labels=None, validation_fraction=.2, fold=None):
     """An inner calibration/tuning split confined to the outer training rows.
 
     Return positions into the supplied IDs. Singletons stay in inner training.
@@ -64,7 +68,7 @@ def inner_split(ids, labels=None, validation_fraction=.2):
     """
     import numpy as np
     from sklearn.model_selection import train_test_split
-    if validation_mask(ids).any():raise ValueError('Calibration must exclude outer validation IDs')
+    if validation_mask(ids, fold=fold).any():raise ValueError('Calibration must exclude outer validation IDs')
     indices=np.arange(len(ids));rare=np.zeros(len(ids),dtype=bool)
     if labels is not None:
         import pandas as pd
@@ -92,7 +96,7 @@ def write_validation(ids, predictions, reported_score=None, model=None):
     if meta.get('split_file') and meta['metric'] not in ('rmse_pixels', 'text_accuracy'):
         from collections import Counter
         split=split_table()
-        expected=set(split.loc[split['split']=='validation','id'])
+        expected=set(split['id']) if meta.get('validation_protocol') == 'stratified_kfold' else set(split.loc[split['split']=='validation','id'])
         counts=Counter(ids)
         missing=sorted(expected-set(ids));extra=sorted(set(ids)-expected)
         duplicates=sorted(k for k,v in counts.items() if v>1)
@@ -101,6 +105,8 @@ def write_validation(ids, predictions, reported_score=None, model=None):
                 ', actual='+str(len(ids))+', missing='+str(missing[:8])+
                 ', extra='+str(extra[:8])+', duplicates='+str(duplicates[:8]))
     frame=pd.DataFrame(values,columns=meta['prediction_columns']);frame.insert(0,'id',ids)
+    if meta.get('validation_protocol') == 'stratified_kfold':
+        frame.insert(1, 'fold', fold_assignments(ids))
     frame.to_csv(out/'validation_predictions.csv',index=False)
     # For pixel tasks the split is image-level; the scorer verifies every pixel.
     split_ids=sorted({x.rsplit('_',2)[0] for x in ids}) if meta['metric']=='rmse_pixels' else ids
@@ -109,6 +115,58 @@ def write_validation(ids, predictions, reported_score=None, model=None):
         'validation_score':reported_score,'higher_is_better':task['higher_is_better'],
         'n_train':meta['n_train'],'n_validation':meta['n_validation'],'score_source':'host-recomputed'}))
     if model:progress('validation_output',model=model)
+
+
+def fold_assignments(ids):
+    """Host-owned fold ID for every supplied public training sample."""
+    import numpy as np
+    if manifest().get('validation_protocol') != 'stratified_kfold':
+        raise ValueError('This task does not use K-fold validation')
+    ids = canonical_ids(ids)
+    split = split_table().set_index('id')
+    if not set(ids) <= set(split.index):
+        raise ValueError('IDs outside fixed public folds')
+    return np.asarray(split.loc[ids, 'fold'], dtype=int)
+
+
+def _ids_hash(ids):
+    import hashlib
+    return hashlib.sha256(json.dumps(sorted(map(str, ids)), separators=(',', ':')).encode()).hexdigest()
+
+
+def record_kfold_training_contract(members, fold_training, final_ids):
+    """Record actual fold membership and full-data final refit; never infer fits."""
+    meta = manifest()
+    if meta.get('validation_protocol') != 'stratified_kfold':
+        raise ValueError('This task does not use K-fold validation')
+    split = split_table(); all_ids = set(split['id'])
+    records = []
+    if len(fold_training) != meta['n_splits']:
+        raise ValueError('Missing fold training records')
+    for fold, row in enumerate(fold_training):
+        if row['fold'] != fold:
+            raise ValueError('Fold records must be in order 0,1,2')
+        train = canonical_ids(row['train_ids']); valid = canonical_ids(row['validation_ids'])
+        expected = set(split.loc[split['fold'] == fold, 'id'])
+        if (len(set(train)) != len(train) or len(set(valid)) != len(valid)
+                or set(train) != all_ids-expected or set(valid) != expected):
+            raise ValueError('Fold training/validation membership differs from host split')
+        records.append({'fold': fold, 'n_train': len(train), 'n_validation': len(valid),
+                        'train_ids_sha256': _ids_hash(train), 'validation_ids_sha256': _ids_hash(valid)})
+    final_ids = canonical_ids(final_ids)
+    if len(final_ids) != len(all_ids) or set(final_ids) != all_ids:
+        raise ValueError('Final model must refit on all public training rows')
+    for member in members:
+        if member.get('folds') != [member.get('validation')]*meta['n_splits']:
+            raise ValueError('Fold training configurations differ')
+    record_training_contract(members)
+    out = Path(task_config()['output_dir'])
+    value = json.loads((out/'training-contract.json').read_text())
+    value.update(validation_protocol='stratified_kfold', n_splits=meta['n_splits'], fold_training=records,
+                 final_training={'n_train': len(final_ids), 'ids_sha256': _ids_hash(final_ids), 'refit': True})
+    temporary = out/'training-contract.json.tmp'
+    temporary.write_text(json.dumps(value, allow_nan=False))
+    temporary.replace(out/'training-contract.json')
 
 
 def remaining_seconds(reserve=45):
