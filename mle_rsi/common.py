@@ -38,11 +38,19 @@ class LimitReached(RuntimeError):
     pass
 
 
+class BudgetExhausted(LimitReached):
+    """A numeric spending ceiling, distinct from unsettled infrastructure."""
+    definitely_not_sent = True
+
+
 class Budget:
     """One ledger per experiment: development AND final share each task's ceiling."""
     def __init__(self, root, spec):
         self.path = Path(root) / 'budget.json'
         self.spec = spec
+
+    def limits(self, task):
+        return {**self.spec, **self.spec.get("task_caps", {}).get(task, {})}
 
     @contextmanager
     def state(self):
@@ -58,13 +66,13 @@ class Budget:
             rows = [r for r in s['api'].values() if r['task'] == task]
             total = sum(r.get('charged_usd', r['reserved_usd']) for r in rows)
             phase_total = sum(r.get('charged_usd', r['reserved_usd']) for r in rows if r['phase'] == phase)
-            cap = self.spec['api_usd_per_task']
-            dev_cap = self.spec['development_api_usd_per_task']
+            cap = self.limits(task)['api_usd_per_task']
+            dev_cap = self.limits(task)['development_api_usd_per_task']
             global_cap = self.spec.get('api_usd_total')
             if global_cap is not None and sum(r.get('charged_usd', r['reserved_usd']) for r in s['api'].values()) + dollars > global_cap:
-                raise LimitReached('Experiment API ceiling reached (including all pending reservations)')
+                raise BudgetExhausted('Experiment API ceiling reached (including all pending reservations)')
             if total + dollars > cap or (phase == 'development' and phase_total + dollars > dev_cap):
-                raise LimitReached('Per-task API ceiling reached (including reservations and earlier phases)')
+                raise BudgetExhausted('Per-task API ceiling reached (including reservations and earlier phases)')
             row = dict(task=task, phase=phase, state='pending', reserved_usd=dollars,
                        request_hash=request_hash, started_at=time.time())
             s['api'][key] = row
@@ -82,13 +90,13 @@ class Budget:
             # Also bound CPU candidate wall time; CPU-only tasks do not get unlimited search.
             total = sum(r['wall_seconds'] for r in rows)
             used = sum(r['wall_seconds'] for r in rows if r['phase'] == phase)
-            remaining = self.spec['execution_seconds_per_task'] - total
+            remaining = self.limits(task)['execution_seconds_per_task'] - total
             if phase == 'development':
-                remaining = min(remaining, self.spec['development_execution_seconds_per_task'] - used)
+                remaining = min(remaining, self.limits(task)['development_execution_seconds_per_task'] - used)
             if gpu:
-                remaining = min(remaining, self.spec['gpu_seconds_per_task'] - sum(r['gpu_seconds'] for r in rows))
+                remaining = min(remaining, self.limits(task)['gpu_seconds_per_task'] - sum(r['gpu_seconds'] for r in rows))
             if remaining < 10:
-                raise LimitReached('Per-task execution/GPU budget exhausted')
+                raise BudgetExhausted('Per-task execution/GPU budget exhausted')
             return remaining
 
     def start_execution(self, key, task, phase, timeout, gpu):
@@ -105,14 +113,14 @@ class Budget:
             if key in s['execution']:
                 raise LimitReached('Execution ID already used')
             rows = [r for r in s['execution'].values() if r['task'] == task]
-            remaining = self.spec['execution_seconds_per_task'] - sum(r['wall_seconds'] for r in rows)
+            remaining = self.limits(task)['execution_seconds_per_task'] - sum(r['wall_seconds'] for r in rows)
             if phase == 'development':
-                remaining = min(remaining, self.spec['development_execution_seconds_per_task'] -
+                remaining = min(remaining, self.limits(task)['development_execution_seconds_per_task'] -
                                 sum(r['wall_seconds'] for r in rows if r['phase'] == phase))
             if gpu:
-                remaining = min(remaining, self.spec['gpu_seconds_per_task'] - sum(r['gpu_seconds'] for r in rows))
+                remaining = min(remaining, self.limits(task)['gpu_seconds_per_task'] - sum(r['gpu_seconds'] for r in rows))
             if remaining < 10:
-                raise LimitReached('Per-task execution/GPU budget exhausted including running candidates')
+                raise BudgetExhausted('Per-task execution/GPU budget exhausted including running candidates')
             timeout = min(requested_timeout, remaining - 5)
             s['execution'][key] = dict(task=task, phase=phase, state='running',
                 wall_seconds=timeout+5, gpu_seconds=timeout+5 if gpu else 0, started_at=time.time())

@@ -219,13 +219,22 @@ class MLEBackend:
 
     async def evaluate(self, artifact, batch):
         if getattr(self, 'resource_pool', None) is not None:
-            async with self.resource_pool.slot(self.task_id, self.task_id in self.spec['execution']['gpu_tasks']) as slot:
+            from .candidate_contract import resource_request
+            try:
+                gpu = self.task_id in self.spec['execution']['gpu_tasks'] if self.mock else resource_request(artifact.source, self.task_id, self.spec)
+            except (ValueError, TypeError) as exc:
+                return EvaluationReport(True,False,0.,FailClass.SOURCE,self.protocol_hash,error=str(exc),
+                    diagnostics={'repairable':True,'preflight_failed':True})
+            async with self.resource_pool.slot(self.task_id, gpu) as slot:
                 worker = copy.copy(self)
                 worker.spec = copy.deepcopy(self.spec)
                 worker.spec['execution']['cpu_ids'] = list(slot['cpus'])
                 worker.spec['execution']['global_pool'] = True
                 worker.spec['execution']['leased_gpu'] = slot['gpu']
                 worker.spec['execution']['gpu_lease_fd'] = slot['fd']
+                worker.spec['execution']['candidate_gpu'] = gpu
+                overrides = worker.spec['execution'].get('task_timeout_seconds', {})
+                worker.spec['execution']['candidate_timeout_seconds'] = overrides.get(self.task_id, worker.spec['execution']['candidate_timeout_seconds'])
                 return await worker._evaluate(artifact, batch)
         if self.cpu_slots is None:
             async with self.gate:
@@ -243,7 +252,7 @@ class MLEBackend:
     async def _evaluate(self, artifact, batch):
         batch = batch() if callable(batch) else batch
         attempt = batch['attempt_id']
-        directory = self.store.root / 'executions' / attempt.replace(':','-')
+        directory = self.store.root / 'executions' / (('stage2-' if self.spec.get('stage2') else '') + attempt.replace(':','-'))
         saved = directory / 'assessment.json'
         if saved.exists():
             record = read(saved)
@@ -290,6 +299,9 @@ class MLEBackend:
             raise
         (directory/'worker.log').write_bytes(output)
         if process.returncode:
+            if (directory/'worker-error.json').exists() and read(directory/'worker-error.json')['state']=='budget_exhausted':
+                from .common import BudgetExhausted
+                raise BudgetExhausted(read(directory/'worker-error.json')['reason'])
             raise LimitReached('Execution worker stopped; inspect '+str(directory/'worker.log'))
         resources = read(directory/'execution/resources.json')
         diagnostics = {'resources':resources, 'output_dir':str(directory/'output'),
@@ -297,12 +309,30 @@ class MLEBackend:
         record = dict(artifact_id=artifact.artifact_id, valid=False, score=0., fail_class='runtime_error',
                       metric={}, diagnostics=diagnostics)
         try:
-            if resources['exit_code'] or resources['timed_out']:
+            out = directory/'output'
+            bundle = out/'complete-bundle.json'
+            recover = bool(resources['timed_out'] and self.spec.get('stage2',{}).get('timeout_bundles') and bundle.exists())
+            if (resources['exit_code'] or resources['timed_out']) and not recover:
                 record['fail_class'] = 'timeout' if resources['timed_out'] else 'runtime_error'
                 detail=diagnostics['stdout_tail'][-5000:]
                 message=f"Timeout after {resources['wall_seconds']:.1f}s; reduce work and reserve inference/output time" if resources['timed_out'] else f"Candidate exited with code {resources['exit_code']}"
                 raise ValueError(message+'\n'+detail if self.fixed else 'Candidate timed out or exited unsuccessfully')
-            out = directory/'output'
+            if recover:
+                pointer=read(bundle)
+                name=pointer['directory']
+                if Path(name).name!=name or not name.startswith('bundle-'):
+                    raise ValueError('Unsafe completed bundle path')
+                out=out/name
+                if out.is_symlink():raise ValueError('Unsafe completed bundle')
+                required={'submission.csv','validation_predictions.csv','candidate-result.json','validation-split.json','training-contract.json'}
+                if set(pointer['hashes'])!=required or read(out/'seal.json')!=pointer['hashes']:
+                    raise ValueError('Incomplete bundle seal')
+                for name,expected in pointer['hashes'].items():
+                    if (out/name).is_symlink() or sha(out/name)!=expected:raise ValueError('Changed completed bundle')
+                diagnostics.update(output_dir=str(out), recovered_complete_bundle=True)
+            if self.spec.get('stage2',{}).get('training_consistency'):
+                from .candidate_contract import validate_training_contract
+                diagnostics['training_contract']=validate_training_contract(read(out/'training-contract.json'))
             for name in ['submission.csv','candidate-result.json','validation-split.json','validation_predictions.csv']:
                 p = out/name
                 if p.is_symlink() or not p.is_file() or p.stat().st_size == 0:
@@ -356,7 +386,7 @@ class MLEBackend:
             record.update(valid=True, score=score, fail_class='ok', metric=metric)
             diagnostics['split_hash'] = split
             diagnostics['submission_sha256'] = sha(out/'submission.csv')
-        except (ValueError, KeyError, TypeError) as exc:
+        except (ValueError, KeyError, TypeError, FileNotFoundError) as exc:
             record['error'] = str(exc)
             if not resources['exit_code'] and not resources['timed_out']: record['fail_class']='output_contract_error'
             if self.fixed:diagnostics['repairable']=True

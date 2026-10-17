@@ -171,4 +171,86 @@ def launch():
         raise
 
 
+
+
+def record_training_contract(members):
+    """Record actual settings of the fitted validation and final models."""
+    value = {'members':members}
+    for member in members:
+        if not member.get('name') or not member.get('validation') or member['validation'] != member.get('final'):
+            raise ValueError('Validation/final training configuration mismatch')
+    if not members:raise ValueError('Empty training ensemble')
+    out=Path(task_config()['output_dir'])
+    temporary=out/'training-contract.json.tmp'
+    temporary.write_text(json.dumps(value,allow_nan=False))
+    temporary.replace(out/'training-contract.json')
+
+
+def commit_outputs():
+    """Publish one complete, immutable output bundle with content hashes."""
+    import hashlib
+    import os
+    import shutil
+    import tempfile
+    out=Path(task_config()['output_dir'])
+    names=('submission.csv','validation_predictions.csv','candidate-result.json',
+           'validation-split.json','training-contract.json')
+    stage=Path(tempfile.mkdtemp(prefix='.bundle-',dir=out))
+    try:
+        hashes={}
+        for name in names:
+            source=out/name
+            if source.is_symlink() or not source.is_file() or source.stat().st_size==0:
+                raise ValueError('Incomplete bundle: '+name)
+            shutil.copyfile(source,stage/name)
+            hashes[name]=hashlib.sha256((stage/name).read_bytes()).hexdigest()
+        (stage/'seal.json').write_text(json.dumps(hashes))
+        for path in stage.iterdir():
+            with path.open('rb') as handle:os.fsync(handle.fileno())
+        # Successive bundles get new names; an atomic pointer selects a complete one.
+        final=out/('bundle-'+stage.name.removeprefix('.bundle-'))
+        stage.rename(final)
+        pointer=out/'complete-bundle.json.tmp'
+        pointer.write_text(json.dumps({'directory':final.name,'hashes':hashes}))
+        pointer.replace(out/'complete-bundle.json')
+        return final
+    finally:
+        if stage.exists():shutil.rmtree(stage)
+
+
+def _feature_key(identity):
+    import hashlib
+    required={'data_sha256','split_sha256','weights_sha256','preprocessing_sha256','extractor_sha256','deterministic','frozen'}
+    if set(identity)!=required or identity['deterministic'] is not True or identity['frozen'] is not True:
+        raise ValueError('Only deterministic frozen features with a complete identity may be cached')
+    for key in required-{'deterministic','frozen'}:
+        value=identity[key]
+        if not isinstance(value,str) or len(value)!=64 or any(c not in '0123456789abcdef' for c in value):
+            raise ValueError('Invalid feature identity: '+key)
+    return hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()
+
+
+def feature_cache_get(identity):
+    import numpy as np
+    path=Path('/feature-cache')/(_feature_key(identity)+'.npy')
+    if not path.exists():return None
+    return np.load(path,allow_pickle=False)
+
+
+def feature_cache_put(identity, values):
+    import numpy as np
+    import os
+    import tempfile
+    root=Path('/feature-cache')
+    root.mkdir(exist_ok=True)
+    key=_feature_key(identity)
+    fd,name=tempfile.mkstemp(prefix='.'+key,dir=root)
+    try:
+        with os.fdopen(fd,'wb') as handle:
+            np.save(handle,values,allow_pickle=False);handle.flush();os.fsync(handle.fileno())
+        os.replace(name,root/(key+'.npy'))
+    finally:
+        Path(name).unlink(missing_ok=True)
+
+
 if __name__=='__main__':launch()

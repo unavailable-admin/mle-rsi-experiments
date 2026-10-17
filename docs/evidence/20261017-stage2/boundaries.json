@@ -1,0 +1,112 @@
+{
+  "aerial-cactus-identification": {
+    "round": 11,
+    "retired": false,
+    "seal_sha256": "d69fad10422a1cec7d0a115510e9766eaf1344474ed062863a2e1be3b0406d03"
+  },
+  "aptos2019-blindness-detection": {
+    "round": 16,
+    "retired": false,
+    "seal_sha256": "35a4ea7370f7cd0c743fe3a3bdc1b27630f33959ba6bc8872e022f5beb20d831"
+  },
+  "denoising-dirty-documents": {
+    "round": 4,
+    "retired": true,
+    "seal_sha256": "00d2fa9cb53e0dd2e13f7c7673031ef2983bd13a1a77d4f2f805829d6cc41206"
+  },
+  "detecting-insults-in-social-commentary": {
+    "round": 4,
+    "retired": true,
+    "seal_sha256": "7c790ffae476adca5802417674fc3ba8c7145cf4ccf3ea4ceff79c54d83e4022"
+  },
+  "dog-breed-identification": {
+    "round": 7,
+    "retired": false,
+    "seal_sha256": "5d17b120d0d4d155e2b5d4bcd85cc7a9b63105ff220d587e0647d4d7e5576144"
+  },
+  "dogs-vs-cats-redux-kernels-edition": {
+    "round": 4,
+    "retired": true,
+    "seal_sha256": "3ce61177dd810e88e16d1af04cf5184a25e2ca9d7cb295fdb1936550a7a3f79a"
+  },
+  "histopathologic-cancer-detection": {
+    "round": 4,
+    "retired": true,
+    "seal_sha256": "a64cb0f87300573179ae22fdcd17e276ab949bd343ab841c663d3b851cbf54f0"
+  },
+  "jigsaw-toxic-comment-classification-challenge": {
+    "round": 11,
+    "retired": false,
+    "seal_sha256": "d14d89b2cd5d079a8a27e744d2318607223aaf84b1e386a868ef2cd77690c50d"
+  },
+  "leaf-classification": {
+    "round": 4,
+    "retired": true,
+    "seal_sha256": "6730d1ba953a81b3200799f84eb926bee58f65094cd209e4be76cb29aec16608"
+  },
+  "mlsp-2013-birds": {
+    "round": 4,
+    "retired": true,
+    "seal_sha256": "95af05b872ccb2b50262997d8a6f8477b22206ba02b8bbacd5919ea9d1f83788"
+  },
+  "new-york-city-taxi-fare-prediction": {
+    "round": 15,
+    "retired": false,
+    "seal_sha256": "02e83210bd059090b34565cd60e86ff917bc99f1608a2d662d28b216dc737d49"
+  },
+  "nomad2018-predict-transparent-conductors": {
+    "round": 4,
+    "retired": true,
+    "seal_sha256": "3aefac3331d44b9e2787471752cbd752489ed8194ca4eae81fcea1b4b2eace2c"
+  },
+  "plant-pathology-2020-fgvc7": {
+    "round": 4,
+    "retired": true,
+    "seal_sha256": "daa46f8c617bf1a1d78c3d9da5b1ff774c5ee46fadde9e056638a10667403cff"
+  },
+  "random-acts-of-pizza": {
+    "round": 4,
+    "retired": true,
+    "seal_sha256": "f9b53ddf79c9df30e0aa9952b449a5ffcb79eaa1dee723ad7548adaab4e67110"
+  },
+  "ranzcr-clip-catheter-line-classification": {
+    "round": 11,
+    "retired": false,
+    "seal_sha256": "2c9692dc33c78f0ceaa63d55229b05ccc20c65a21ee5d48fd9396c0e0d2a7f62"
+  },
+  "siim-isic-melanoma-classification": {
+    "round": 11,
+    "retired": false,
+    "seal_sha256": "5403bffa2104614c7b1c4d18003ee9f3c6769468527cfdee31d8d7c8c9b21377"
+  },
+  "spooky-author-identification": {
+    "round": 4,
+    "retired": true,
+    "seal_sha256": "44ddd655e8ff9571db041bea6edd4834d0b71e8a3ca6db5a688a8a0a00c8dd88"
+  },
+  "tabular-playground-series-dec-2021": {
+    "round": 4,
+    "retired": true,
+    "seal_sha256": "039057242a2d9013ca5011033e919c0422f544423eaec9f9c9bac71c15e99e3c"
+  },
+  "tabular-playground-series-may-2022": {
+    "round": 12,
+    "retired": false,
+    "seal_sha256": "8ea22151626e0ab606d09a0a4ba951a8e04b9a4ffa802cd1fa204b954a970bb2"
+  },
+  "text-normalization-challenge-english-language": {
+    "round": 4,
+    "retired": true,
+    "seal_sha256": "df04f5240a7d0f54be500918d55947cc7dc91b5bbb538f811f0e494429c4c988"
+  },
+  "text-normalization-challenge-russian-language": {
+    "round": 4,
+    "retired": true,
+    "seal_sha256": "85982b568fa662727169ff042cda8303c7c0bf4ee0e58be100c68c3d61595e1a"
+  },
+  "the-icml-2013-whale-challenge-right-whale-redux": {
+    "round": 4,
+    "retired": true,
+    "seal_sha256": "a765d83012026752082687cebe82f8abe46ce7bb282cd32b20c6f4bce13c49c5"
+  }
+}

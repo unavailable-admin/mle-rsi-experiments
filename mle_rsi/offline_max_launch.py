@@ -12,11 +12,10 @@ from .common import read,write,lock
 from .rounds import control
 
 
-def launch(root):
+def launch(root, ports=(19070,19071,19072), controller=True):
     # Includes the online controller's entire lifetime; duplicate starts are rejected.
     with lock(root/'controller',blocking=False): pass
     os.sched_setaffinity(0,read(root/'frozen-config.json')['spec']['execution']['cpu_ids'])
-    ports=(19070,19071,19072)
     services=[('dashboard',['-m','mle_rsi.rounds','web','--run-dir',str(root),'--port',str(ports[0])]),
         ('tree-viewer',['-m','mle_rsi','web','--run-dir',str(root),'--port',str(ports[1])]),
         ('resource-monitor',['scripts/monitor_resources.py','--run-dir',str(root),
@@ -57,9 +56,12 @@ def launch(root):
             if any(p.poll() is not None for p in processes):raise RuntimeError('Viewer exited; inspect logs')
             time.sleep(1)
     else:raise RuntimeError('Viewer readiness failed; no paid work launched')
+    if not controller:
+        print('Viewers ready; experiment remains unstarted')
+        return
     control(root,'resume')
     proc=service('controller',['-m','mle_rsi.rounds','run','--run-dir',str(root)])
     time.sleep(2)
     if proc.poll() is not None:raise RuntimeError('Controller exited; inspect controller.log')
     print(f'Controller {proc.pid}; run {root}; code {REPO}')
-    print('Dashboard http://127.0.0.1:19070/ | trees :19071 | resources :19072')
+    print(f'Dashboard http://127.0.0.1:{ports[0]}/ | trees :{ports[1]} | resources :{ports[2]}')

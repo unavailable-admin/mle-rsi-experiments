@@ -1,0 +1,33 @@
+{
+  "source_manifest_verified": true,
+  "budget_bytes_preserved": true,
+  "new_increment": {
+    "api_usd_total": 150,
+    "api_usd_per_task": 15,
+    "development_api_usd_per_task": 15,
+    "execution_seconds_per_task": 180000,
+    "development_execution_seconds_per_task": 180000,
+    "gpu_seconds_per_task": 180000
+  },
+  "retired_tasks": 14,
+  "tasks": {
+    "aerial-cactus-identification": 11,
+    "aptos2019-blindness-detection": 16,
+    "dog-breed-identification": 7,
+    "jigsaw-toxic-comment-classification-challenge": 11,
+    "new-york-city-taxi-fare-prediction": 15,
+    "ranzcr-clip-catheter-line-classification": 11,
+    "siim-isic-melanoma-classification": 11,
+    "tabular-playground-series-may-2022": 12
+  },
+  "historical_unsettled_counts": {
+    "api": 1,
+    "execution": 2
+  },
+  "controller_started": false,
+  "paid_requests_sent": false,
+  "training_started": false,
+  "control": "pause",
+  "run_dir": "/opt/mle-rsi-stage2/runs/lite22-stage2-001",
+  "deployment": "/opt/mle-rsi-stage2/code"
+}

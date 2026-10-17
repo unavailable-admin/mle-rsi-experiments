@@ -1,0 +1,12 @@
+{
+  "previous": {
+    "request_bytes": 25578723,
+    "visible_nodes": 251,
+    "eligible_parents": 251
+  },
+  "cumulative_prefix_only": {
+    "request_bytes": 340980,
+    "visible_nodes": 251,
+    "eligible_parents": 251
+  }
+}

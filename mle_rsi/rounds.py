@@ -93,6 +93,8 @@ def round_slot_evidence(store, number):
             raise RuntimeError('Incomplete batch decisions: ' + tree_id)
         created = tree.nodes[tree.initial_node_count:]
         committed = {node.attempt.attempt_id for node in created}
+        if len(committed)!=len(created):
+            raise RuntimeError('Duplicate committed attempt: '+tree_id)
         expected_ids = {f'{tree_id}:r{i}:a{j}' for i in range(5) for j in range(5)}
         actual_ids = {key for key in attempts if key.startswith(tree_id + ':')}
         if actual_ids != expected_ids or not committed <= expected_ids:
@@ -118,8 +120,9 @@ def round_slot_evidence(store, number):
                     missing_parents.append(step.parent_ids[position])
                     interrupted.append({'attempt_id': ident, 'lifecycle': attempt.lifecycle,
                                         'reason': 'Expansion interrupted before a node was committed'})
+            revealed = [public_ids[node.node_id] for node in created if node.attempt.attempt_id.startswith(f'{tree_id}:r{index}:')]
             if (Counter(missing_parents) != Counter(step.missing_parent_ids)
-                    or completed_count != len(step.revealed_ids)):
+                    or completed_count != len(step.revealed_ids) or tuple(revealed)!=step.revealed_ids):
                 raise RuntimeError('Interrupted slots disagree with replay evidence: ' + tree_id)
         expected_nodes += len(created)
     if len(store.list('node')) != expected_nodes or expected_nodes + len(interrupted) != number * 25:
@@ -146,7 +149,7 @@ def export_round(root, task, store, number):
         if diagnostics.get('output_dir'):
             source = Path(diagnostics['output_dir'])/'submission.csv'
             lineage_path = root/'offline-max-lineage.json'
-            if lineage_path.exists() and not source.exists():
+            if (lineage_path.exists() or (root/'stage2-lineage.json').exists()) and not source.exists():
                 # An inherited winner may remain best on the new host. Locate its
                 # immutable exported submission by hash, never rewrite old nodes.
                 expected = diagnostics['submission_sha256']
@@ -180,6 +183,9 @@ def unresolved(root, task):
     pending = [(section, key, v) for section in ('api', 'execution')
                for key, v in b[section].items()
                if v['task'] == task and v['state'] in ('pending', 'running', 'uncertain')]
+    if (root/'stage2-lineage.json').exists():
+        archived=read(root/'stage2-lineage.json')['historical_unsettled']
+        pending=[(section,key,v) for section,key,v in pending if archived.get(section,{}).get(key)!=v]
     if not pending:
         return False
     # A durable dream skip prevents resending that revision. Its uncertain bill
@@ -276,6 +282,9 @@ async def run(root, through_round=None):
                     status(root, task, 'searching', round=number)
                     print(f'ROUND {number} START {task}', flush=True)
                     await c.run_round(number)
+                    if spec.get('stage2'):
+                        from .offline_tiers import receipt
+                        write(root/'offline-receipts'/task/f'{number:04d}.json',receipt(c.store,number))
                     round_slot_evidence(c.store, number)
                     await grade_checkpoint(task, number)
                 status(root, task, 'round_complete', round=number)
@@ -285,7 +294,12 @@ async def run(root, through_round=None):
             except Exception as exc:
                 reason = f'{type(exc).__name__}: {exc}'
                 blocked[task] = reason
-                status(root, task, 'blocked', round=number, reason=reason)
+                from .common import BudgetExhausted
+                cause, exhausted = exc, False
+                while cause is not None:
+                    exhausted |= isinstance(cause, BudgetExhausted)
+                    cause = cause.__cause__
+                status(root, task, 'budget_exhausted' if exhausted else 'blocked', round=number, reason=reason)
                 (root/'task-status'/f'{task}.log').write_text(traceback.format_exc())
                 print(f'BLOCKED {task}: {reason}', flush=True)
             finally:
@@ -358,7 +372,8 @@ async def run(root, through_round=None):
                 break
             active = [t for t in tasks if t in campaigns and t not in blocked and t not in retired]
             if not active:
-                overall('blocked', blocked=blocked)
+                exhausted = [t for t in blocked if read(root/'task-status'/f'{t}.json').get('state')=='budget_exhausted']
+                overall('budget_exhausted' if len(exhausted)==len(blocked) else 'blocked', blocked=blocked, budget_exhausted=exhausted)
                 break
             completed = {t: campaigns[t].checkpoints.load(campaigns[t].config.campaign_id)['completed_rounds'] for t in active}
             pending_reports = [t for t in active if any(

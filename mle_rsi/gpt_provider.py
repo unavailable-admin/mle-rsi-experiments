@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 import httpx
 
-from .common import Budget, LimitReached, read, write
+from .common import Budget, BudgetExhausted, LimitReached, read, write
 
 
 class GPTTransport:
@@ -25,7 +25,8 @@ class GPTTransport:
 
     async def _call(self, config, messages, request_id, role):
         ident = f'{self.campaign_id}:{request_id}'
-        directory = self.root/'api'/self.campaign_id/hashlib.sha256(request_id.encode()).hexdigest()[:24]
+        if self.spec.get('stage2'):ident='stage2:'+ident
+        directory = self.root/'api'/('stage2-'+self.campaign_id if self.spec.get('stage2') else self.campaign_id)/hashlib.sha256(request_id.encode()).hexdigest()[:24]
         payload = {'model': config.model, 'messages': messages, 'reasoning_effort': config.reasoning_effort,
                    'max_completion_tokens': config.max_output_tokens, 'stream': False}
         pricing = self.spec['model']['reservation_rates'][config.model]
@@ -37,9 +38,9 @@ class GPTTransport:
         else:
             with self.budget.state() as ledger:
                 rows = [r for r in ledger['api'].values() if r['task'] == self.task]
-                remaining = self.spec['budget']['api_usd_per_task'] - sum(r.get('charged_usd', r['reserved_usd']) for r in rows)
+                remaining = self.budget.limits(self.task)['api_usd_per_task'] - sum(r.get('charged_usd', r['reserved_usd']) for r in rows)
                 if self.phase == 'development':
-                    remaining = min(remaining, self.spec['budget']['development_api_usd_per_task'] -
+                    remaining = min(remaining, self.budget.limits(self.task)['development_api_usd_per_task'] -
                                     sum(r.get('charged_usd', r['reserved_usd']) for r in rows if r['phase'] == self.phase))
                 if 'api_usd_total' in self.spec['budget']:
                     remaining = min(remaining, self.spec['budget']['api_usd_total'] -
@@ -49,7 +50,7 @@ class GPTTransport:
             available = int((remaining - input_reserve - .001) * 1e6 / output_rate)
             minimum = min(config.max_output_tokens, self.spec['model'].get('minimum_output_tokens', 8192))
             if available < minimum:
-                raise LimitReached('Insufficient budget for minimum GPT output allowance')
+                raise BudgetExhausted('Insufficient budget for minimum GPT output allowance')
             payload['max_completion_tokens'] = min(config.max_output_tokens, available)
         raw = json.dumps(payload, ensure_ascii=False).encode()
         request_hash = hashlib.sha256(raw).hexdigest()

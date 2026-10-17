@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 import httpx
 
-from .common import Budget, LimitReached, read, write
+from .common import Budget, BudgetExhausted, LimitReached, read, write
 
 
 def load_key(spec):
@@ -44,19 +44,20 @@ class GeminiTransport:
                  'generationConfig':{'temperature':1,'maxOutputTokens':config.max_output_tokens,
                                      'thinkingConfig':{'thinkingLevel':'HIGH'}}}
         ident=f'{self.campaign_id}:{request_id}'
-        directory=self.root/'api'/self.campaign_id/hashlib.sha256(request_id.encode()).hexdigest()[:24]
+        if self.spec.get('stage2'):ident='stage2:'+ident
+        directory=self.root/'api'/('stage2-'+self.campaign_id if self.spec.get('stage2') else self.campaign_id)/hashlib.sha256(request_id.encode()).hexdigest()[:24]
         if (directory/'request.json').exists():
             payload['generationConfig']['maxOutputTokens']=read(directory/'request.json')['generationConfig']['maxOutputTokens']
         else:
             with self.budget.state() as ledger:
                 rows=[r for r in ledger['api'].values() if r['task']==self.task]
-                remaining=self.spec['budget']['api_usd_per_task']-sum(r.get('charged_usd',r['reserved_usd']) for r in rows)
+                remaining=self.budget.limits(self.task)['api_usd_per_task']-sum(r.get('charged_usd',r['reserved_usd']) for r in rows)
                 if self.phase=='development':
-                    remaining=min(remaining,self.spec['budget']['development_api_usd_per_task']-sum(r.get('charged_usd',r['reserved_usd']) for r in rows if r['phase']==self.phase))
+                    remaining=min(remaining,self.budget.limits(self.task)['development_api_usd_per_task']-sum(r.get('charged_usd',r['reserved_usd']) for r in rows if r['phase']==self.phase))
             input_reserve=(len(json.dumps(payload,ensure_ascii=False).encode())+8192)*8/1e6
             available=int((remaining-input_reserve-.001)*1e6/36)
             if available<min(config.max_output_tokens,32768):
-                raise LimitReached('Insufficient budget for a complete response (minimum 32768 output-token allowance)')
+                raise BudgetExhausted('Insufficient budget for a complete response (minimum 32768 output-token allowance)')
             payload['generationConfig']['maxOutputTokens']=min(config.max_output_tokens,available)
         raw=json.dumps(payload,ensure_ascii=False).encode()
         request_hash=hashlib.sha256(raw).hexdigest()

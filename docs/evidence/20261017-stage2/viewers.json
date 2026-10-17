@@ -1,0 +1,24 @@
+{
+  "urls": {
+    "http://127.0.0.1:19170/": 200,
+    "http://127.0.0.1:19171/": 200,
+    "http://127.0.0.1:19172/": 200
+  },
+  "run_dir": "/opt/mle-rsi-stage2/runs/lite22-stage2-001",
+  "state": {
+    "state": "ready",
+    "updated_at": 1792228091.4293873
+  },
+  "controller_alive": false,
+  "remaining_tasks": [
+    "aerial-cactus-identification",
+    "aptos2019-blindness-detection",
+    "dog-breed-identification",
+    "jigsaw-toxic-comment-classification-challenge",
+    "new-york-city-taxi-fare-prediction",
+    "ranzcr-clip-catheter-line-classification",
+    "siim-isic-melanoma-classification",
+    "tabular-playground-series-may-2022"
+  ],
+  "retired_count": 14
+}

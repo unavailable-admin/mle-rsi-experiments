@@ -1,5 +1,5 @@
 diff --git a/src/bench_container.py b/src/bench_container.py
-index e3dbed8..08c6e2f 100644
+index e3dbed8..12bbb5a 100644
 --- a/src/bench_container.py
 +++ b/src/bench_container.py
 @@ -1,5 +1,6 @@
@@ -9,7 +9,21 @@ index e3dbed8..08c6e2f 100644
  from pathlib import Path
  import subprocess
  import time
-@@ -11,7 +12,7 @@ def measure_container(command,cwd,env,output,mounts,timeout=14400,cpu_ids=None,g
+@@ -7,11 +8,21 @@ import docker
+ 
+ from settings import WORKSPACE as ROOT
+ 
++
++def kill_if_running(container):
++    """An exit racing our timeout is normal; other daemon errors remain errors."""
++    try:
++        container.kill()
++    except docker.errors.APIError:
++        container.reload()
++        if container.status not in ('exited', 'dead'):
++            raise
++
+ def measure_container(command,cwd,env,output,mounts,timeout=14400,cpu_ids=None,gpu=None,memory='32g'):
      output=Path(output);output.mkdir(parents=True,exist_ok=True)
      cfg={'runtime':'sysbox-runc','nano_cpus':8_000_000_000,'shm_size':'4G','mounts':[]}
      if gpu is not None:
@@ -18,3 +32,65 @@ index e3dbed8..08c6e2f 100644
          cfg['nano_cpus']=8_000_000_000
      cfg['mounts']+=mounts
      cfg['shm_size']=env.get('BENCH_SHM_SIZE',cfg.get('shm_size','4G'))
+@@ -30,6 +41,9 @@ def measure_container(command,cwd,env,output,mounts,timeout=14400,cpu_ids=None,g
+     container=client.containers.create(image,command,working_dir=str(cwd),
+             user='0:0',network_disabled=True,use_config_proxy=False,environment=clean,
+             mem_limit=memory,labels={'benchmark.candidate':'true'},**cfg)
++    (output/'container.json').write_text(json.dumps({'container_id':container.id,
++        'created_at':time.time(),'timeout_seconds':timeout,'gpu':gpu})+'\n')
++    result = None
+     try:
+         image_id=container.image.id;container.start()
+         while True:
+@@ -50,12 +64,15 @@ def measure_container(command,cwd,env,output,mounts,timeout=14400,cpu_ids=None,g
+                             if int(pid) in pids:used+=int(amount)*1024**2
+                         except ValueError:pass
+                     peak_vram=max(peak_vram,used)
+-                except docker.errors.APIError:
++                except docker.errors.APIError as exc:
++                    # Sampling is diagnostic, not the candidate's result. Sysbox
++                    # top can race cgroup teardown while status still says running.
++                    with (output/'sampling-errors.log').open('a') as log:
++                        log.write(str(exc)+'\n')
+                     container.reload()
+-                    if container.status not in ['exited','dead']:raise
+             samples+=1
+             if time.monotonic()-started>timeout:
+-                timed_out=True;container.kill();break
++                timed_out=True;kill_if_running(container);break
+             time.sleep(.5)
+         code=container.wait()['StatusCode']
+         (output/'stdout.log').write_bytes(container.logs())
+@@ -71,5 +88,31 @@ def measure_container(command,cwd,env,output,mounts,timeout=14400,cpu_ids=None,g
+                                      'Container UID 0 is namespaced by Sysbox; host inputs are read-only.']}
+         (output/'resources.json').write_text(json.dumps(result,indent=2)+'\n')
+         return result
++    except BaseException as exc:
++        # Persist verified termination/accounting before cleanup removes the only
++        # container evidence. If the daemon is unreachable keep the reservation.
++        try:
++            container.reload()
++            if container.status not in ('exited','dead'):
++                kill_if_running(container)
++            code=container.wait(timeout=30)['StatusCode']
++            elapsed=time.monotonic()-started
++            evidence={'exit_code':code,'timed_out':timed_out,'wall_seconds':elapsed,
++                'gpu_allocated_seconds':elapsed if gpu is not None else 0,
++                'container_id':container.id,'accounting_verified':True,
++                'interrupted':True,'error_type':type(exc).__name__,'error':str(exc)}
++            (output/'interrupted-resources.json').write_text(json.dumps(evidence,indent=2)+'\n')
++        except BaseException as accounting_error:
++            (output/'accounting-error.json').write_text(json.dumps({'error':str(accounting_error)})+'\n')
++        raise
+     finally:
+-        container.remove(force=True);client.close()
++        try:
++            container.remove(force=True)
++        except docker.errors.NotFound:
++            pass
++        except Exception as exc:
++            (output/'cleanup-error.json').write_text(json.dumps({'type':type(exc).__name__,'error':str(exc)})+'\n')
++            if result is None:
++                raise
++        finally:
++            client.close()

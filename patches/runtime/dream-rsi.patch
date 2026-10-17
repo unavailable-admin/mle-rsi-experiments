@@ -332,11 +332,56 @@ index 61f7777..9b97bb7 100644
      gaps = report.get("objective_gaps", {})
      gap_cases = []
      for case_id, values in gaps.items():
+diff --git a/my_rsi/src/dream_rsi/llm.py b/my_rsi/src/dream_rsi/llm.py
+index 5a530d3..b1d4b29 100644
+--- a/my_rsi/src/dream_rsi/llm.py
++++ b/my_rsi/src/dream_rsi/llm.py
+@@ -175,6 +175,11 @@ class LLMClient:
+         except BaseException as exc:
+             if isinstance(exc,KeyboardInterrupt):
+                 raise
++            if getattr(exc, 'definitely_not_sent', False):
++                self.ledger.reconcile(request_id, {'status':'not_sent','tokens':0,'cost_usd':0.,
++                    'latency_s':time.monotonic()-start})
++                self.ledger.store.put('provider_error',request_id,{'not_sent':True,'error_type':type(exc).__name__})
++                raise
+             durable = self.ledger.store.get("response",request_id)
+             if durable:
+                 self.ledger.reconcile(request_id,{"status":"completed",**{k:v for k,v in durable.items() if k != "request_hash"}})
 diff --git a/my_rsi/src/dream_rsi/online.py b/my_rsi/src/dream_rsi/online.py
-index 8ff8eef..9be3dc2 100644
+index 8ff8eef..927b7bd 100644
 --- a/my_rsi/src/dream_rsi/online.py
 +++ b/my_rsi/src/dream_rsi/online.py
-@@ -111,6 +111,10 @@ class OnlineScheduler:
+@@ -64,6 +64,8 @@ class OnlineScheduler:
+         manifest.update(history_mode=tree.history_mode,initial_node_count=tree.initial_node_count,
+                         initial_prefix_hash=digest(plain(root.nodes)),round_budget_unit=self.round_budget_unit,
+                         fixed_batch_size=self.fixed_batch_size)
++        if tree.history_mode == 'cumulative':
++            manifest['policy_context'] = 'cumulative-prefix-only-v1'
+         if tree.any_node_parents:
+             manifest["any_node_parents"] = True
+         if forced:
+@@ -80,11 +82,17 @@ class OnlineScheduler:
+         from .tree import NodeReportCache
+         reports = NodeReportCache(self.view_diagnostics == "summary")
+         def current_view(nodes,index,feedback=(),remaining=None):
+-            return build_view(nodes,prior_history,index,limits,self.W,feedback,tree.action_protocol,beta,seed,manifest["jitter_scale"],
++            # Cumulative prefixes already contain every historical node. Sending
++            # all earlier cumulative trees again grows quadratically and disagrees
++            # with ReplayWorld.from_tree, which correctly uses empty base_context.
++            context = () if tree.history_mode == 'cumulative' else prior_history
++            return build_view(nodes,context,index,limits,self.W,feedback,tree.action_protocol,beta,seed,manifest["jitter_scale"],
+                               root_leaves_only=tree.history_mode == "cumulative",any_node=tree.any_node_parents,
+                               remaining_nodes=remaining,diagnostics=reports)
+         feedback = []
+-        async with PolicyWorker(source,self.policy_limits) as worker:
++        factory = getattr(self, 'policy_worker_factory', None)
++        runner = factory(source,self.policy_limits,tree_id=tree.tree_id) if factory else PolicyWorker(source,self.policy_limits)
++        async with runner as worker:
+             # Rebuild process state by replaying decisions against the historical online prefixes.
+             count = tree.initial_node_count
+             for index,step in enumerate(tree.rounds):
+@@ -111,6 +119,10 @@ class OnlineScheduler:
                  remaining = None if self.round_calls is None else self.round_calls-used
                  if remaining is not None and remaining <= 0:
                      return tree,{"stop_reason":"discovery_budget","rounds":len(tree.rounds)}
@@ -347,7 +392,7 @@ index 8ff8eef..9be3dc2 100644
                  index = len(tree.rounds)
                  view,mapping = current_view(tree.nodes,index,feedback,node_budget(count))
                  decision = self._forced(forced,view,mapping,node_budget(count)) if index == 0 and forced else None
-@@ -151,6 +155,8 @@ class OnlineScheduler:
+@@ -151,6 +163,8 @@ class OnlineScheduler:
                  tree.rounds.append(step)
                  count += len(created)
                  self.store.commit_round(f"{tree.tree_id}:{index}",created,tree.to_payload())
@@ -399,11 +444,64 @@ index 0975939..ff06d9b 100644
 +            reason += "; explicit alternate-anchor exploration"
          return {"parent_ids": parents, "next_state": {}, "reason": reason}
  '''
+diff --git a/my_rsi/src/dream_rsi/policy_runtime.py b/my_rsi/src/dream_rsi/policy_runtime.py
+index 667b9d4..1fae467 100644
+--- a/my_rsi/src/dream_rsi/policy_runtime.py
++++ b/my_rsi/src/dream_rsi/policy_runtime.py
+@@ -186,12 +186,17 @@ class PolicyWorker:
+         if self.process is None or self.process.returncode is not None:
+             raise PolicyError("Policy worker is not running")
+         state = self.state if state is None else state
++        request = (request_text(view,state)+"\n").encode()
+         try:
+-            self.process.stdin.write((request_text(view,state)+"\n").encode())
++            self.process.stdin.write(request)
+             await asyncio.wait_for(self.process.stdin.drain(),self.limits.wall_time_s)
+         except (asyncio.TimeoutError,BrokenPipeError,ConnectionResetError) as exc:
++            process, stderr = self.process, self.stderr_task
+             await self.close()
+-            raise PolicyError("Policy failed while receiving view") from exc
++            detail = (stderr.result() or b"").decode(errors="replace") if stderr and not stderr.cancelled() else ""
++            raise PolicyError(f"Policy failed while receiving view: {type(exc).__name__}; "
++                              f"input_bytes={len(request)}; returncode={process.returncode}; "
++                              f"stderr={detail[-8192:]}") from exc
+         payload = await self._read()
+         if "error" in payload:
+             raise PolicyError(payload["error"])
 diff --git a/my_rsi/src/dream_rsi/prompting.py b/my_rsi/src/dream_rsi/prompting.py
-index 77b9461..1c51e70 100644
+index 77b9461..9d87bd8 100644
 --- a/my_rsi/src/dream_rsi/prompting.py
 +++ b/my_rsi/src/dream_rsi/prompting.py
-@@ -442,8 +442,9 @@ the selected policy's baked-in default_beta throughout a round. This scheduling
+@@ -325,8 +325,26 @@ def _evidence_messages(system, user, model, role, context_config):
+     if model is not None:
+         budget = getattr(context_config, role+"_tokens")
+         tokens = count_messages(messages, model)["tokens"]
+-        if tokens > budget:
+-            raise ContextOverflow(f"Evidence {role} input needs {tokens} tokens; budget {budget}; not truncated")
++        # Leave room for host role instructions and one bounded extraction retry.
++        target = min(budget - 12000, model.context_tokens-model.max_output_tokens-12000)
++        omitted = []
++        if role == "discovery" and tokens > target:
++            import copy
++            user = copy.deepcopy(user)
++            references = user.get("reference_sources", [])
++            # Drop dependent reference diffs from the end first. Keep the exact
++            # parent source, diagnosis, task and public best identity unchanged.
++            while references and tokens > target:
++                item = references.pop()
++                omitted.append({"node_id":item["node_id"], "reason":"context budget",
++                                "source_sha256":__import__("hashlib").sha256(item.get("source", "").encode()).hexdigest()})
++                user["context_selection"] = {"omitted_references":omitted,
++                    "full_evidence":"retained in immutable campaign artifacts",
++                    "parent_source_preserved":True}
++                messages[1]["content"] = json_text(user)
++                tokens = count_messages(messages,model)["tokens"]
++        if tokens > target:
++            raise ContextOverflow(f"Evidence {role} mandatory input needs {tokens} tokens; safe budget {target}; no request sent")
+         ContextGuard.check(messages, model)
+     return messages
+ 
+@@ -442,8 +460,9 @@ the selected policy's baked-in default_beta throughout a round. This scheduling
  beta is separate from fixed evaluator beta1/beta2. Route target width, patience,
  repair reserve and pruning through one _schedule(beta, width) method. High beta
  means wider batches, greater patience and weaker pruning; low beta is selective.

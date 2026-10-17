@@ -8,7 +8,7 @@ import signal
 from pathlib import Path
 
 from . import WORKSPACE
-from .common import Budget, LimitReached, read, write
+from .common import Budget, BudgetExhausted, LimitReached, read, write
 from bench_container import measure_container
 
 
@@ -22,7 +22,7 @@ def main():
     execution = spec['execution']
     cpu = execution['cpu_ids']
     if not set(cpu) <= os.sched_getaffinity(0): raise RuntimeError('Configured CPUs unavailable')
-    gpu_task = task in execution['gpu_tasks']
+    gpu_task = execution.get('candidate_gpu', task in execution['gpu_tasks'])
     lease, gpu = None, None
     try:
         if gpu_task and execution.get('global_pool'):
@@ -83,6 +83,12 @@ def main():
             if validation['split_file']:pairs.append((prepared/'split.csv',Path('/validation/split.csv'),True))
             for target,source in validation.get('data_overrides',{}).items():
                 pairs.append((prepared/source,Path('/data')/target,True))
+        if spec.get('stage2',{}).get('feature_cache'):
+            cache=root/'feature-cache'/task
+            cache.mkdir(parents=True,exist_ok=True)
+            if execution.get('container_output_uid') is not None:
+                os.chown(cache,execution['container_output_uid'],execution['container_output_gid'])
+            pairs.append((cache,Path('/feature-cache'),False))
         for source,target in [(execution.get('pretrained_models'),'/models/pretrained'),(execution.get('torch_cache',str(WORKSPACE/'cache/torch')),'/models/torch')]:
             if source and Path(source).exists():pairs.append((Path(source).resolve(),Path(target),True))
         mounts=[{'Source':str(s),'Target':str(t),'Type':'bind','ReadOnly':ro} for s,t,ro in pairs]
@@ -97,10 +103,20 @@ def main():
             result=measure_container(command,
                          '/output',env,directory/'execution',mounts,timeout,cpu,gpu)
         except BaseException:
-            # Retain the full reservation on unknown execution accounting.
+            evidence=directory/'execution/interrupted-resources.json'
+            if evidence.exists():
+                settled=read(evidence)
+                if settled.get('accounting_verified'):
+                    budget.finish_execution(key,settled['wall_seconds'],settled['gpu_allocated_seconds'],
+                        exit_code=settled['exit_code'],timed_out=settled['timed_out'],
+                        interrupted=True,accounting_evidence=str(evidence))
+            # Unknown accounting retains the full reservation.
             raise
         budget.finish_execution(key,result['wall_seconds'],result['gpu_allocated_seconds'],
                                 exit_code=result['exit_code'],timed_out=result['timed_out'])
+    except BudgetExhausted as exc:
+        write(directory/'worker-error.json', {'state':'budget_exhausted','reason':str(exc)})
+        raise
     finally:
         if lease:lease.close()
 

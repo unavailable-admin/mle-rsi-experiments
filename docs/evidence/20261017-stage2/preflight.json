@@ -1,0 +1,20 @@
+{
+  "bwrap_policy_isolation": true,
+  "tasks": 22,
+  "docker": "29.9.1",
+  "image": "sha256:859eb2ba86a41e3a360e9d726a183147a20faa990bfd5f7f3e4f4372b375f00f",
+  "gpu_pool": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "credentials_configured": true,
+  "authenticated_model_list": true,
+  "generation_api_tested": false,
+  "paid_api_called": false
+}

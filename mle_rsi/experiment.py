@@ -55,6 +55,8 @@ def frozen(root):
     value=read(Path(root)/'frozen-config.json')
     if value['source_hashes']!=source_manifest():
         raise RuntimeError('Sources changed after initialization; use a new run directory')
+    if value['spec'].get('stage2') and sha(Path(root)/'stage2-lineage.json')!=value.get('stage2_lineage_sha256'):
+        raise RuntimeError('Stage2 lineage changed')
     if value['spec'].get('offline_max'):
         if sha(Path(root)/'offline-max-lineage.json') != value.get('offline_max_lineage_sha256'):
             raise RuntimeError('Offline-max lineage changed')
@@ -150,6 +152,8 @@ def campaign(root, task, phase, *, initial_source=None, resource_pool=None, api_
     def developer_responder(messages,request_id):
         return json.dumps({'source':best_first_policy_source(tunable=cfg.policy_tuning_trials>1,width=1),'change_note':'Mock revision: narrow batch policy'})
     lineage=read(root/'offline-max-lineage.json') if spec.get('offline_max') else None
+    if spec.get('stage2'):
+        lineage=read(root/'stage2-lineage.json')
     c=Campaign(cfg,task_backend=backend,
                inherited_evaluation_protocol=lineage['tasks'][task]['protocol_hash'] if lineage else None,initial_policy_source_override=initial_source,
                discovery_responder=discovery_responder if mock_model else None,
@@ -163,6 +167,12 @@ def campaign(root, task, phase, *, initial_source=None, resource_pool=None, api_
         c.agent.prompts = DiversityPrompts(c.agent.prompts)
         c.agent.max_response_attempts = 2
         c.store.put('metadata', 'diversity_trial', spec['diversity_trial'])
+    if spec.get('stage2'):
+        from .candidate_contract import StagePrompts
+        c.agent.prompts = StagePrompts(c.agent.prompts, spec)
+        from functools import partial
+        from .policy_recovery import RecoveringPolicyWorker
+        c.scheduler.policy_worker_factory = partial(RecoveringPolicyWorker, store=c.store)
     if not mock_model and connect_transport:
         load_key(spec)
         transport_class=GPTTransport if model.get('transport')=='gpt-chat' else GeminiTransport
