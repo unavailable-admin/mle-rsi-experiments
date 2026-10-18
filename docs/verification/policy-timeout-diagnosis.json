@@ -1,0 +1,209 @@
+{
+  "isolated_original_policy": [
+    {
+      "startup_s": 0.1135147080058232,
+      "response_s": 0.001483220956288278,
+      "parent_cpu_s": 0.0006035309999994354,
+      "parents": [
+        "r",
+        "r"
+      ]
+    },
+    {
+      "startup_s": 0.10617194301448762,
+      "response_s": 0.0012045009061694145,
+      "parent_cpu_s": 0.0004999829999992045,
+      "parents": [
+        "r",
+        "r"
+      ]
+    },
+    {
+      "startup_s": 0.09978781302925199,
+      "response_s": 0.0011729539837688208,
+      "parent_cpu_s": 0.0004803130000006206,
+      "parents": [
+        "r",
+        "r"
+      ]
+    },
+    {
+      "startup_s": 0.11600456002634019,
+      "response_s": 0.0012447860790416598,
+      "parent_cpu_s": 0.0004712229999999096,
+      "parents": [
+        "r",
+        "r"
+      ]
+    },
+    {
+      "startup_s": 0.10671142896171659,
+      "response_s": 0.0011893389746546745,
+      "parent_cpu_s": 0.00045618699999927514,
+      "parents": [
+        "r",
+        "r"
+      ]
+    },
+    {
+      "startup_s": 0.105228416970931,
+      "response_s": 0.0011031859321519732,
+      "parent_cpu_s": 0.000446598999999992,
+      "parents": [
+        "r",
+        "r"
+      ]
+    },
+    {
+      "startup_s": 0.10406957904342562,
+      "response_s": 0.001232457929290831,
+      "parent_cpu_s": 0.000488637000000125,
+      "parents": [
+        "r",
+        "r"
+      ]
+    },
+    {
+      "startup_s": 0.10153474193066359,
+      "response_s": 0.0011081720003858209,
+      "parent_cpu_s": 0.000439924000000147,
+      "parents": [
+        "r",
+        "r"
+      ]
+    },
+    {
+      "startup_s": 0.09693041699938476,
+      "response_s": 0.0011203669710084796,
+      "parent_cpu_s": 0.0004381359999996448,
+      "parents": [
+        "r",
+        "r"
+      ]
+    },
+    {
+      "startup_s": 0.1002459570299834,
+      "response_s": 0.0011643209727481008,
+      "parent_cpu_s": 0.0004614820000004016,
+      "parents": [
+        "r",
+        "r"
+      ]
+    }
+  ],
+  "controlled_host_stall": [
+    {
+      "limit": 1,
+      "duration": 1.3023197350557894,
+      "outcome": "PolicyTimeout: Policy response timeout: phase=decision; limit_s=1; returncode=-9; stderr="
+    },
+    {
+      "limit": 1,
+      "duration": 1.3040129689034075,
+      "outcome": "PolicyTimeout: Policy response timeout: phase=decision; limit_s=1; returncode=-9; stderr="
+    },
+    {
+      "limit": 1,
+      "duration": 1.3023140389705077,
+      "outcome": "PolicyTimeout: Policy response timeout: phase=decision; limit_s=1; returncode=-9; stderr="
+    },
+    {
+      "limit": 8,
+      "duration": 1.3012852219399065,
+      "outcome": "ok"
+    },
+    {
+      "limit": 8,
+      "duration": 1.3013350210385397,
+      "outcome": "ok"
+    },
+    {
+      "limit": 8,
+      "duration": 1.3012547029647976,
+      "outcome": "ok"
+    }
+  ],
+  "parallel_after_fix": {
+    "root": "/mnt/afs/yangsen1/experiment/mle-rsi-leaf-aptos-20261018-143318/runs/policy-timeout-diagnosis/mock-dc17cd74",
+    "policy_reads": [
+      {
+        "operation": "policy_read",
+        "phase": "startup",
+        "duration": 0.00042118201963603497,
+        "state": "ok"
+      },
+      {
+        "operation": "policy_read",
+        "phase": "decision",
+        "duration": 0.00014813197776675224,
+        "state": "ok"
+      },
+      {
+        "operation": "policy_read",
+        "phase": "startup",
+        "duration": 0.22212215897161514,
+        "state": "ok"
+      },
+      {
+        "operation": "policy_read",
+        "phase": "decision",
+        "duration": 1.0803373459493741,
+        "state": "ok"
+      },
+      {
+        "operation": "policy_read",
+        "phase": "decision",
+        "duration": 1.6601311870617792,
+        "state": "ok"
+      },
+      {
+        "operation": "policy_read",
+        "phase": "decision",
+        "duration": 0.5050094440812245,
+        "state": "ok"
+      },
+      {
+        "operation": "policy_read",
+        "phase": "startup",
+        "duration": 3.815500531345606e-05,
+        "state": "ok"
+      },
+      {
+        "operation": "policy_read",
+        "phase": "decision",
+        "duration": 0.0001502059167250991,
+        "state": "ok"
+      },
+      {
+        "operation": "policy_read",
+        "phase": "decision",
+        "duration": 0.0001487779663875699,
+        "state": "ok"
+      },
+      {
+        "operation": "policy_read",
+        "phase": "startup",
+        "duration": 0.6150179820833728,
+        "state": "ok"
+      },
+      {
+        "operation": "policy_read",
+        "phase": "decision",
+        "duration": 0.00015142990741878748,
+        "state": "ok"
+      },
+      {
+        "operation": "policy_read",
+        "phase": "decision",
+        "duration": 0.00014522101264446974,
+        "state": "ok"
+      }
+    ],
+    "max_loop_lag": 2.5764680639933797
+  },
+  "regression": {
+    "passed": 22,
+    "seconds": 15.04
+  },
+  "limitation": "The original incident has no per-stage timing sample. Reproductions establish the failure mechanism, not the identity of the exact historical blocking operation."
+}

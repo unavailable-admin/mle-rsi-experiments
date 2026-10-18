@@ -56,6 +56,9 @@ def validate(value):
         raise ValueError('Invalid feature cache settings')
     if type(cache.get('enabled', False)) is not bool or any(type(v) is not int or v <= 0 for k, v in cache.items() if k != 'enabled'):
         raise ValueError('Cache bounds must be positive integers')
+    # Preserve the MLE deployment limit: policy wall time includes host loop delays
+    # from concurrent campaigns and durable storage, not just policy computation.
+    value.setdefault('search', {}).setdefault('policy_decision_timeout_s', 8)
     value.setdefault('rounds', 1)
     value.setdefault('batches', 5)
     value.setdefault('batch_size', 5)
