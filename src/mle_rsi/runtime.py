@@ -225,9 +225,11 @@ def launch():
     sys.argv=[args.agent,'--task','/task.json']
     try:
         runpy.run_path(args.agent,run_name='__main__')
-        required=['submission.csv','validation_predictions.csv','candidate-result.json','validation-split.json']
+        required=['submission.csv','validation_predictions.csv','candidate-result.json','validation-split.json','training-contract.json']
         missing=[name for name in required if not (Path(config['output_dir'])/name).is_file()]
         if missing:raise ValueError('Missing required output: '+str(missing))
+        training = json.loads((Path(config['output_dir'])/'training-contract.json').read_text())
+        validate_training_members(training.get('members') if isinstance(training, dict) else None)
         progress('completed')
     except BaseException as exc:
         progress('failed',error=f'{type(exc).__name__}: {exc}')
@@ -236,13 +238,21 @@ def launch():
 
 
 
+def validate_training_members(members):
+    hint = "Use rt.record_training_contract([{'name': 'model', 'validation': settings, 'final': settings}]) with actual fitted settings."
+    if not isinstance(members, list) or not members:
+        raise ValueError('Training contract requires a nonempty members list. ' + hint)
+    for member in members:
+        if (not isinstance(member, dict) or not isinstance(member.get('name'), str)
+                or not member['name'] or not isinstance(member.get('validation'), dict)
+                or not member['validation'] or member['validation'] != member.get('final')):
+            raise ValueError('Training member requires name and matching nonempty validation/final settings. ' + hint)
+
+
 def record_training_contract(members):
     """Record actual settings of the fitted validation and final models."""
-    value = {'members':members}
-    for member in members:
-        if not member.get('name') or not member.get('validation') or member['validation'] != member.get('final'):
-            raise ValueError('Validation/final training configuration mismatch')
-    if not members:raise ValueError('Empty training ensemble')
+    validate_training_members(members)
+    value = {'members': members}
     out=Path(task_config()['output_dir'])
     temporary=out/'training-contract.json.tmp'
     temporary.write_text(json.dumps(value,allow_nan=False))

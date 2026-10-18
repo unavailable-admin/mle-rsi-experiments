@@ -97,6 +97,13 @@ class ModelService:
             payload['temperature'] = config.temperature
         return config.base_url.rstrip('/') + self.settings.get('chat_path', '/v1/chat/completions'), payload
 
+    @staticmethod
+    def error_evidence(exc, stage):
+        cause = exc.__cause__
+        return {'error': f'{type(exc).__name__} during {stage}: {str(exc) or "no exception message"}',
+                'error_type': type(exc).__name__, 'stage': stage,
+                'cause_type': type(cause).__name__ if cause is not None else None}
+
     async def generate(self,config,messages,request_id,role,input_hash):
         existing=await self.lookup(request_id,input_hash)
         if existing is not None and existing['status']!='not_sent':return existing
@@ -113,11 +120,14 @@ class ModelService:
             try:self.ledger.reserve(request_id,self.task,input_hash,{'api_usd':reserve})
             except BudgetExhausted as exc:raise BudgetExceeded(str(exc)) from exc
             write(directory/'request.json',{'id':request_id,'input_hash':input_hash,'role':role,'payload':payload})
+            stage = 'client_setup'
             try:
                 async with self.client(config) as client:
                     write(directory/'sending.json',{'at':time.time()})
                     self.ledger.record(request_id,'running')
+                    stage = 'request'
                     response=await client.post(url,json=payload)
+                    stage = 'response_received'
                     try:body=response.json()
                     except ValueError:body={'raw_body':response.text[:8192]}
                     write(directory/'response.json',{'status':response.status_code,'body':body,
@@ -129,15 +139,17 @@ class ModelService:
                     write(self.backoff_path,{'failures':self.failures,'retry_at':self.retry_at})
                     return await self.finish(client,request_id,directory)
             except (httpx.ConnectError,httpx.ConnectTimeout,httpx.PoolTimeout,RequestNotSent) as exc:
-                self.ledger.record(request_id,'not_sent',{'error':str(exc)})
-                raise RequestNotSent(str(exc)) from exc
+                evidence = self.error_evidence(exc, stage)
+                self.ledger.record(request_id,'not_sent',evidence)
+                raise RequestNotSent(evidence['error']) from exc
             except (asyncio.CancelledError,KeyboardInterrupt):
                 self.ledger.record(request_id,'unknown')
                 raise
             except Exception as exc:
+                evidence = self.error_evidence(exc, stage)
                 if self.ledger.get(request_id)['state']!='completed':
-                    self.ledger.record(request_id,'unknown',{'error':str(exc)})
-                raise ExternalUnknown(str(exc)) from exc
+                    self.ledger.record(request_id,'unknown',evidence)
+                raise ExternalUnknown(evidence['error']) from exc
 
 
 class GeminiService(ModelService):

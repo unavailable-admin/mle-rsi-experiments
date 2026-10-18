@@ -6,7 +6,7 @@ from . import validation
 
 COMMON_CONTRACT = '''
 Write a complete Python script executed as python /agent.py --task /task.json.
-Read the JSON task: public_data_dir=/data (read-only), output_dir=/output (writable),
+Read the JSON task: data_dir=/data (read-only), output_dir=/output (writable),
 seed, competition_id, validation_metric, higher_is_better, and budget.
 No network or private labels. Inspect public files at runtime; do not invent columns.
 Installed environment includes numpy, pandas, scipy, sklearn, torch, torchvision,
@@ -30,6 +30,17 @@ The score is agent-reported; be honest, never substitute training or test scores
 Write submission.csv for ALL test inputs in the required official format, containing
 real predictions. Keep it and every required artifact as ordinary files in /output.
 Refit on all public training data only after measuring held-out validation quality.
+Record the actual fitted validation and final model settings using this API:
+rt.record_training_contract([
+    {'name': 'model', 'validation': settings, 'final': settings}
+])
+For an ensemble, record each fitted member. Both settings dictionaries must be
+nonempty and describe the same training procedure; do not fabricate fit records.
+The helper writes training-contract.json with a nonempty members list. There is
+no rt.record_training() API. After saving submission.csv and validation outputs,
+call rt.commit_outputs(). Required files are submission.csv,
+validation_predictions.csv, validation-split.json, candidate-result.json and
+training-contract.json.
 Each attempt starts in a fresh output directory; no checkpoints are inherited.
 Do not start background processes. Finish all required output before the timeout.
 '''
@@ -95,6 +106,17 @@ V2_CONTRACT = COMMON_CONTRACT + FIXED_CONTRACT + '''
 After saving held-out validation predictions, you may refit on all public training
 rows for final test predictions only. Do not overwrite held-out predictions with
 predictions from this refitted model. Keep all required outputs as ordinary files.
+Record the actual fitted validation and final model settings using this API:
+rt.record_training_contract([
+    {'name': 'model', 'validation': settings, 'final': settings}
+])
+For an ensemble, record each fitted member. Both settings dictionaries must be
+nonempty and describe the same training procedure; do not fabricate fit records.
+The helper writes training-contract.json with a nonempty members list. There is
+no rt.record_training() API. After saving submission.csv and validation outputs,
+call rt.commit_outputs(). Required files are submission.csv,
+validation_predictions.csv, validation-split.json, candidate-result.json and
+training-contract.json.
 Each attempt starts in a fresh output directory; no checkpoints are inherited.
 Do not start background processes. Finish all required output before the timeout.
 '''

@@ -49,3 +49,51 @@ async def test_504_skip_preserves_unknown_fee(tmp_path,monkeypatch):
         assert ledger.get('id')['amounts']['api_usd']>0
         assert await service.lookup('id','hash')==result
     finally:ledger.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('error_type,expected_posts', [(httpx.ConnectTimeout, 2), (httpx.ReadTimeout, 1)])
+async def test_connection_retry_and_unknown_no_resend(tmp_path, monkeypatch, error_type, expected_posts):
+    from dream_rsi.llm import LLMClient
+    from dream_rsi.storage import CampaignStore, UsageLedger
+    from dream_rsi.errors import ExternalUnknown
+    monkeypatch.setenv('TEST_MODEL_KEY', 'fixture')
+    posts = []
+    def handler(request):
+        if request.method == 'GET':
+            return httpx.Response(200, json={'amount': {'currency': 'USD', 'value': .02}})
+        posts.append(request)
+        if len(posts) == 1:
+            raise error_type('') from OSError('fixture connection failure')
+        return httpx.Response(200, headers={'x-request-id': 'p'}, json={
+            'model': 'fixture', 'choices': [{'finish_reason': 'stop', 'message': {'content': 'source'}}],
+            'usage': {'total_tokens': 4}})
+    settings = {'model': {'base_url': 'https://fixture.invalid', 'model': 'fixture',
+                         'api_key_env': 'TEST_MODEL_KEY', 'provider': 'openai-compatible',
+                         'timeout_attempts': 3, 'timeout_retry_delay_s': 0},
+                'reservation_rates': {'input_usd_per_million': 1, 'output_usd_per_million': 1},
+                'billing_delays': [0]}
+    ledger = Ledger(tmp_path, {})
+    store = CampaignStore(tmp_path/'store')
+    service = ModelService(tmp_path, 'task', ledger, settings, asyncio.Semaphore(1),
+        client_factory=lambda **kw: httpx.AsyncClient(transport=httpx.MockTransport(handler), **kw))
+    client = LLMClient(ModelConfig(**settings['model']), UsageLedger(store), transport=service)
+    try:
+        if error_type is httpx.ConnectTimeout:
+            result, _ = await client.generate([{'role': 'user', 'content': 'x'}], 'id')
+            assert result == 'source'
+            assert ledger.summary()['totals']['api_usd'] == .02
+        else:
+            for _ in range(2):
+                with pytest.raises(ExternalUnknown):
+                    await client.generate([{'role': 'user', 'content': 'x'}], 'id')
+        assert len(posts) == expected_posts
+        failed = next(row for row in ledger.rows() if row['state'] in ('not_sent', 'unknown'))
+        assert failed['evidence']['error_type'] == error_type.__name__
+        assert failed['evidence']['cause_type'] == 'OSError'
+        assert failed['evidence']['stage'] == 'request'
+        assert error_type.__name__ in failed['evidence']['error']
+        assert failed['amounts']['api_usd'] == 0 if error_type is httpx.ConnectTimeout else failed['amounts']['api_usd'] > 0
+    finally:
+        store.close()
+        ledger.close()
