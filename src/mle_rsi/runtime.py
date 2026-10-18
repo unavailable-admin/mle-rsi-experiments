@@ -281,5 +281,70 @@ def commit_outputs():
         if stage.exists():shutil.rmtree(stage)
 
 
+
+def deterministic_features(name, builder, *, parameters, input_identity):
+    """Cache label-independent deterministic preprocessing, never fitted models.
+
+    builder takes (parameters, input_identity) and returns a dict of numeric
+    numpy arrays. Declare every dependency in those JSON values, including IDs,
+    preprocessing settings, model/weight hashes and random seeds. Function
+    source, public data, split, image and runtime also enter the key. Closures
+    are rejected. Uncached behavior remains available when caching is disabled.
+    """
+    import hashlib
+    import inspect
+    import os
+    import tempfile
+    import numpy as np
+
+    def encoded(value):
+        return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True, allow_nan=False).encode()
+
+    config = task_config().get('feature_cache')
+    if not config:
+        return builder(parameters, input_identity)
+    if getattr(builder, '__closure__', None) or inspect.ismethod(builder):
+        raise ValueError('Cached builder must not depend on a closure or bound instance')
+    identity = {'schema': 1, 'namespace': config['namespace'], 'name': name,
+                'builder': hashlib.sha256(inspect.getsource(builder).encode()).hexdigest(),
+                'parameters': parameters, 'inputs': input_identity}
+    key = hashlib.sha256(encoded(identity)).hexdigest()
+    def load(entry):
+        meta = json.loads((entry / 'metadata.json').read_text())
+        data = entry / 'features.npz'
+        if meta['identity'] != identity or hashlib.sha256(data.read_bytes()).hexdigest() != meta['sha256']:
+            raise ValueError('Corrupt feature cache')
+        with np.load(data, allow_pickle=False) as arrays:
+            return {k: arrays[k].copy() for k in arrays.files}
+    published = Path(config['read_dir']) / key
+    if published.is_dir():
+        return load(published)
+    pending = Path(task_config()['output_dir']) / '.feature-cache'
+    pending.mkdir(exist_ok=True)
+    entry = pending / key
+    if entry.is_dir():
+        return load(entry)
+    result = builder(parameters, input_identity)
+    if not isinstance(result, dict) or not result or any(not isinstance(k, str) or not k or '/' in k for k in result):
+        raise ValueError('Feature builder must return named numeric arrays')
+    arrays = {k: np.asarray(v) for k, v in result.items()}
+    if any(v.dtype.hasobject or v.dtype.kind not in 'biufc' for v in arrays.values()):
+        raise ValueError('Only numeric feature arrays may be cached')
+    import shutil
+    temporary = Path(tempfile.mkdtemp(prefix='.entry-', dir=pending))
+    try:
+        data = temporary / 'features.npz'
+        np.savez(data, **arrays)
+        if data.stat().st_size > config['max_entry_bytes']:
+            raise ValueError('Feature cache entry exceeds bound')
+        meta = {'identity': identity, 'sha256': hashlib.sha256(data.read_bytes()).hexdigest()}
+        (temporary / 'metadata.json').write_bytes(encoded(meta))
+        os.rename(temporary, entry)
+    finally:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+    return arrays
+
+
 if __name__ == '__main__':
     launch()

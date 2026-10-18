@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "mode": "mock",
+  "tasks": [
+    {
+      "id": "fixture-a"
+    },
+    {
+      "id": "fixture-b"
+    },
+    {
+      "id": "excluded"
+    }
+  ],
+  "excluded_tasks": [
+    "excluded"
+  ],
+  "host": {
+    "cpus": [
+      0,
+      1
+    ],
+    "gpus": []
+  },
+  "rounds": 1,
+  "batches": 2,
+  "batch_size": 2,
+  "api_parallelism": 2,
+  "offline_tier": "baseline",
+  "search": {
+    "M": 2,
+    "replay_scenarios": 1,
+    "scheduling_betas": [
+      0.5
+    ],
+    "policy_decision_timeout_s": 5,
+    "decision_rules": {
+      "repair_limit": 2,
+      "prefer_repair": true,
+      "best_first": true,
+      "stagnation_draft": 3,
+      "fallback": true
+    },
+    "novelty_gate": "python-ast",
+    "novelty_retries": 2
+  },
+  "budget": {
+    "total": {
+      "api_usd": 1,
+      "execution_seconds": 1000,
+      "gpu_seconds": 0
+    }
+  },
+  "feature_cache": {
+    "enabled": true,
+    "max_entry_bytes": 134217728,
+    "max_total_bytes": 1073741824
+  },
+  "task_parallelism": 1
+}

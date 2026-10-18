@@ -23,10 +23,15 @@ class MLEBackend:
         manifest={'metric':'auc','task':self.task_id} if self.mock else read(self.prepared/'manifest.json')
         self.manifest=manifest;self.metric=tasks.metric(manifest)
         objective='Verification fixture' if self.mock else (Path(task['public_dir'])/'description.md').read_text()
+        if task.get('instructions'):
+            objective += '\nEXPERIMENT INSTRUCTIONS:\n' + task['instructions']
         self.task=TaskSpec(task_id=self.task_id,objective_text=objective,
             candidate_contract='Fixture only' if self.mock else tasks.contract(manifest)+'\nVALIDATION MANIFEST:\n'+json.dumps({k:v for k,v in manifest.items() if k not in ('file_hashes','data_overrides')}),
             allowed_language='python',allowed_libraries=('installed-environment',),
             benchmark_protocol_id='mle-public-v1',evaluation_criteria={'metric':self.metric,'score_direction':'higher_is_better'})
+
+        if spec.get('feature_cache', {}).get('enabled', False):
+            self.task = replace(self.task, candidate_contract=self.task.candidate_contract + '\nOptional deterministic_features(name, builder, parameters=..., input_identity=...) in mle_runtime caches label-independent numeric preprocessing only; declare all input/weight/seed dependencies. Never cache trained models or validation-dependent state.')
 
     def fingerprint(self):
         return {'task':self.task_id,'validation':digest(self.manifest),'metric':self.metric,
@@ -72,9 +77,14 @@ class MLEBackend:
         async with self.pool.slot(self.task_id,cores,gpu if recovered is None else False) as slot:
             directory.mkdir(parents=True,exist_ok=True)
             (directory/'agent.py').write_text(artifact.source)
+            cache_config = {}
+            if self.spec.get('feature_cache', {}).get('enabled', False):
+                from .feature_cache import namespace
+                cache_config = {'feature_cache': {'namespace': namespace(self.root, self.settings), 'read_dir': '/feature-cache',
+                    'max_entry_bytes': self.spec['feature_cache'].get('max_entry_bytes', 128 * 1024**2)}}
             write(directory/'task.json',{'competition_id':self.task_id,'seed':0,'data_dir':'/data','output_dir':'/output',
                 'validation_manifest':'/validation/manifest.json','validation_metric':self.metric['name'],
-                'higher_is_better':self.metric['higher_is_better'],'runtime_inventory':'/runtime/inventory.json',
+                'higher_is_better':self.metric['higher_is_better'],'runtime_inventory':'/runtime/inventory.json',**cache_config,
                 'budget':{'wall_seconds':self.settings['timeout_seconds'],'cpu_count':len(slot['cpus']),'gpu_count':int(slot['gpu'] is not None)}})
             resources=recovered or await execute(self.root,directory,ident,identity,self.settings,self.spec['host'],slot,self.ledger)
             diagnostics={'resources':resources,'output_dir':str(directory/'output')}
@@ -119,6 +129,12 @@ class MLEBackend:
                         if other.get('diagnostics',{}).get('public_score',{}).get('prediction_fingerprints',{}).get(kind)==value:
                             duplicates.setdefault(kind,[]).append(str(earlier.parent))
                 diagnostics['prediction_duplicate_of']=duplicates
+                if cache_config:
+                    from .feature_cache import promote
+                    try:
+                        diagnostics['feature_cache'] = promote(self.root, self.settings, output, self.spec['feature_cache'])
+                    except (ValueError, KeyError, OSError) as exc:
+                        diagnostics['feature_cache_error'] = str(exc)
             except (ValueError,KeyError,TypeError,FileNotFoundError) as exc:
                 row['error']=str(exc);row.setdefault('fail_class','output_contract_error')
             write(saved,row)
@@ -132,7 +148,10 @@ class MLEBackend:
 def assemble(root,task,spec,ledger,pool,transport=None,control=None,progress=None):
     from .config import OFFLINE
     search={**OFFLINE[spec.get('offline_tier','baseline')],**spec.get('search',{})}
-    model=ModelConfig(**spec.get('model',{}))
+    model_value = dict(spec.get('model', {}))
+    if model_value.get('provider') == 'gemini':
+        model_value['provider'] = 'external'
+    model=ModelConfig(**model_value)
     config=CampaignConfig(output_dir=str(Path(root)/'campaigns'),campaign_id=task['id'],outer_rounds=spec['rounds'],
         W=spec['batch_size'],K1=spec['batches'],K2=spec['batches'],
         max_response_attempts=1,round_discovery_calls=spec['batches']*spec['batch_size'],

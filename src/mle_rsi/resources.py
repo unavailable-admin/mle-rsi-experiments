@@ -17,12 +17,24 @@ def siblings(cpu):
 
 
 class ResourcePool:
-    def __init__(self, host, mock=False):
+    def __init__(self, host, mock=False, status_path=None):
         self.host, self.mock = host, mock
+        self.status_path = status_path
         self.cpus=set(host['cpus']);self.gpus=set(host.get('gpus', []))
         if any(len(siblings(c) & self.cpus)>1 for c in self.cpus):
             raise ValueError('Configure one logical CPU per physical core')
         self.active={};self.waiters=[];self.grants={};self.serial=0
+
+    def publish(self):
+        if self.status_path is not None:
+            import os
+            import time
+            from .io import write
+            write(self.status_path, {'controller_pid': os.getpid(), 'updated_at': time.time(),
+                'configured_cpus': self.host['cpus'], 'configured_gpus': self.host.get('gpus', []),
+                'free_cpus': sorted(self.cpus), 'free_gpus': sorted(self.gpus),
+                'active': list(self.active.values()), 'waiting': [dict(ticket=w[0], task=w[1], cores=w[2], gpu=w[3]) for w in self.waiters],
+                'grants': self.grants})
 
     def free_gpus(self):
         if self.mock or not self.gpus:return set(self.gpus)
@@ -40,6 +52,7 @@ class ResourcePool:
             raise ValueError('Unsatisfiable resource request')
         self.serial+=1
         ticket=(self.serial,task,cores,gpu);self.waiters.append(ticket)
+        self.publish()
         acquired=None;stack=ExitStack()
         try:
             while acquired is None:
@@ -69,6 +82,7 @@ class ResourcePool:
                             self.active[ticket[0]]={'task':task,**acquired}
                             self.grants[task]=self.grants.get(task,0)+1
                             self.waiters.remove(ticket)
+                            self.publish()
                 if acquired is None:await asyncio.sleep(.1 if self.mock else .5)
             yield acquired
         finally:
@@ -78,3 +92,4 @@ class ResourcePool:
                 if acquired['gpu'] is not None:self.gpus.add(acquired['gpu'])
                 self.active.pop(ticket[0],None)
             stack.close()
+            self.publish()

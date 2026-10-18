@@ -34,6 +34,8 @@ def validate(value):
     if len(set(gpus)) != len(gpus) or any(type(g) is not int or g<0 for g in gpus):
         raise ValueError('Distinct GPU IDs required')
     for t in tasks:
+        if not isinstance(t.get('instructions', ''), str):
+            raise ValueError('Task instructions must be text')
         t.setdefault('cores', min(4,len(cpus)))
         t.setdefault('gpu', False)
         t.setdefault('gpu_cores', t['cores'])
@@ -49,17 +51,26 @@ def validate(value):
             raise ValueError('Unknown validation protocol')
         if t['validation']=='kfold' and t['id'] not in ('aerial-cactus-identification','aptos2019-blindness-detection'):
             raise ValueError('Kfold supported for Cactus/APTOS only')
+    cache = value.get('feature_cache', {})
+    if not isinstance(cache, dict) or set(cache) - {'enabled', 'max_entry_bytes', 'max_total_bytes', 'max_entries_per_candidate'}:
+        raise ValueError('Invalid feature cache settings')
+    if type(cache.get('enabled', False)) is not bool or any(type(v) is not int or v <= 0 for k, v in cache.items() if k != 'enabled'):
+        raise ValueError('Cache bounds must be positive integers')
     value.setdefault('rounds', 1)
     value.setdefault('batches', 5)
     value.setdefault('batch_size', 5)
     value.setdefault('api_parallelism', 5)
-    for key in ('rounds','batches','batch_size','api_parallelism'):
+    value.setdefault('task_parallelism', len(tasks))
+    for key in ('rounds','batches','batch_size','api_parallelism','task_parallelism'):
         if type(value[key]) is not int or value[key]<1:
             raise ValueError('Positive integer required: '+key)
     if value.get('deadline_at') is not None and (type(value['deadline_at']) not in (int,float) or not math.isfinite(value['deadline_at'])):
         raise ValueError('Deadline must be a finite UTC timestamp')
     from dream_rsi.config import ModelConfig,CampaignConfig
-    ModelConfig(**value.get('model',{})).validate()
+    model_value = dict(value.get('model', {}))
+    if model_value.get('provider') == 'gemini':
+        model_value['provider'] = 'external'
+    ModelConfig(**model_value).validate()
     managed={'output_dir','campaign_id','outer_rounds','W','K1','K2','max_response_attempts',
              'round_discovery_calls','round_discovery_budget_unit','fixed_batch_size',
              'exploration_protocol','offline_from_original_root','offline_latest_prefix_only',
@@ -78,8 +89,8 @@ def validate(value):
             if not host.get(key):
                 raise ValueError('Missing host setting: '+key)
         model = value['model']
-        if model.get('provider')!='openai-compatible' or model.get('wire_api','chat')!='chat' or model.get('stream',False):
-            raise ValueError('First provider adapter supports non-streaming compatible chat')
+        if model.get('provider') not in ('openai-compatible', 'gemini') or model.get('wire_api','chat')!='chat' or model.get('stream',False):
+            raise ValueError('Provider adapters require non-streaming text requests')
         rates = value['provider']['reservation_rates']
         if any(type(rates.get(k)) not in (int,float) or rates[k]<=0 or not math.isfinite(rates[k]) for k in ('input_usd_per_million','output_usd_per_million')):
             raise ValueError('Positive reservation rates required')

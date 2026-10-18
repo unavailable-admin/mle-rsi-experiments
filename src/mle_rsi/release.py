@@ -14,6 +14,9 @@ def sources():
     for name,root in roots.items():
         for p in sorted(root.rglob('*.py')):
             values[name+'/'+str(p.relative_to(root))]=sha(p)
+    for p in sorted((roots['mle'] / 'web_assets').glob('*')):
+        if p.is_file():
+            values['web/' + p.name] = sha(p)
     prompts=roots['dream'].parents[1]/'prompts'
     if not prompts.is_dir():
         from importlib.resources import files

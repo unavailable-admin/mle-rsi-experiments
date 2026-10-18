@@ -54,7 +54,7 @@ class ModelService:
     async def bill(self,client,directory,provider_id):
         if (directory/'billing.json').exists():return read(directory/'billing.json')['cost_usd']
         if not provider_id:return None
-        base=self.settings['model']['base_url'].rstrip('/')
+        base=self.settings.get('billing_base_url', self.settings['model']['base_url']).rstrip('/')
         for delay in self.settings.get('billing_delays',[0,2,4]):
             if delay:await asyncio.sleep(delay)
             try:
@@ -78,15 +78,24 @@ class ModelService:
         elif response['status']!=200 or cost is None:
             result={'status':'unknown','reason':'Response or billing unresolved'}
         else:
-            body=response['body']
-            choice=(body.get('choices') or [{}])[0]
-            text=choice.get('message',{}).get('content')
-            if body.get('model')!=self.settings['model']['model'] or choice.get('finish_reason')!='stop' or not isinstance(text,str) or not text.strip():
-                result={'status':'unknown','reason':'Incomplete or mismatched model response; fee retained'}
-            else:
-                result={'status':'completed','text':text,'tokens':body.get('usage',{}).get('total_tokens'),'cost_usd':cost}
+            result = self.decode(response['body'], cost)
         if result['status']!='unknown':write(directory/'result.json',result)
         return result
+
+    def decode(self, body, cost):
+        choice = (body.get('choices') or [{}])[0]
+        text = choice.get('message', {}).get('content')
+        if body.get('model') != self.settings['model']['model'] or choice.get('finish_reason') != 'stop' or not isinstance(text, str) or not text.strip():
+            return {'status': 'unknown', 'reason': 'Incomplete or mismatched model response; fee retained'}
+        return {'status': 'completed', 'text': text, 'tokens': body.get('usage', {}).get('total_tokens'), 'cost_usd': cost}
+
+    def request(self, config, messages):
+        payload = {'model': config.model, 'messages': messages, 'max_completion_tokens': config.max_output_tokens, 'stream': False}
+        if config.reasoning_effort is not None:
+            payload['reasoning_effort'] = config.reasoning_effort
+        if config.temperature is not None:
+            payload['temperature'] = config.temperature
+        return config.base_url.rstrip('/') + self.settings.get('chat_path', '/v1/chat/completions'), payload
 
     async def generate(self,config,messages,request_id,role,input_hash):
         existing=await self.lookup(request_id,input_hash)
@@ -97,9 +106,7 @@ class ModelService:
         async with self.gate:
             # An admitted batch drains; pause does not interrupt its remaining requests.
             directory=self.directory(request_id)
-            payload={'model':config.model,'messages':messages,'max_completion_tokens':config.max_output_tokens,'stream':False}
-            if config.reasoning_effort is not None:payload['reasoning_effort']=config.reasoning_effort
-            if config.temperature is not None:payload['temperature']=config.temperature
+            url, payload = self.request(config, messages)
             rates=self.settings['reservation_rates']
             reserve=((len(json.dumps(payload,ensure_ascii=False).encode())+8192)*rates['input_usd_per_million']+
                      config.max_output_tokens*rates['output_usd_per_million'])/1e6
@@ -110,7 +117,7 @@ class ModelService:
                 async with self.client(config) as client:
                     write(directory/'sending.json',{'at':time.time()})
                     self.ledger.record(request_id,'running')
-                    response=await client.post(config.base_url.rstrip('/')+self.settings.get('chat_path','/v1/chat/completions'),json=payload)
+                    response=await client.post(url,json=payload)
                     try:body=response.json()
                     except ValueError:body={'raw_body':response.text[:8192]}
                     write(directory/'response.json',{'status':response.status_code,'body':body,
@@ -131,3 +138,51 @@ class ModelService:
                 if self.ledger.get(request_id)['state']!='completed':
                     self.ledger.record(request_id,'unknown',{'error':str(exc)})
                 raise ExternalUnknown(str(exc)) from exc
+
+
+class GeminiService(ModelService):
+    """Native generateContent wire format with the same durable gateway billing.
+
+    Reference: https://ai.google.dev/api/generate-content
+    Thought parts are excluded from candidate text. Token counts are evidence,
+    never a substitute for the actual gateway USD bill.
+    """
+    def request(self, config, messages):
+        system = []
+        contents = []
+        for message in messages:
+            if not isinstance(message.get('content'), str):
+                raise RequestNotSent('Gemini text adapter requires string content')
+            if message['role'] == 'system':
+                system.append({'text': message['content']})
+            elif message['role'] in ('user', 'assistant'):
+                contents.append({'role': 'model' if message['role'] == 'assistant' else 'user',
+                                 'parts': [{'text': message['content']}]})
+            else:
+                raise RequestNotSent('Unsupported Gemini message role')
+        generation = {'maxOutputTokens': config.max_output_tokens}
+        if config.temperature is not None:
+            generation['temperature'] = config.temperature
+        if self.settings.get('thinking_config') is not None:
+            generation['thinkingConfig'] = self.settings['thinking_config']
+        payload = {'contents': contents, 'generationConfig': generation}
+        if system:
+            payload['systemInstruction'] = {'parts': system}
+        url = config.base_url.rstrip('/') + '/v1beta/models/' + quote(config.model, safe='') + ':generateContent'
+        return url, payload
+
+    def decode(self, body, cost):
+        candidates = body.get('candidates') or []
+        versions = self.settings.get('accepted_model_versions', [self.settings['model']['model']])
+        if len(candidates) != 1 or candidates[0].get('finishReason') != 'STOP' or body.get('modelVersion') not in versions:
+            return {'status': 'unknown', 'reason': 'Incomplete, blocked or mismatched Gemini response; fee retained'}
+        parts = candidates[0].get('content', {}).get('parts', [])
+        text = ''.join(p.get('text', '') for p in parts if not p.get('thought', False))
+        if not text.strip():
+            return {'status': 'unknown', 'reason': 'Gemini returned no final text; fee retained'}
+        return {'status': 'completed', 'text': text, 'tokens': body.get('usageMetadata', {}).get('totalTokenCount'), 'cost_usd': cost}
+
+
+def model_service(root, task, ledger, settings, gate, control=None, client_factory=None):
+    cls = GeminiService if settings['model']['provider'] == 'gemini' else ModelService
+    return cls(root, task, ledger, settings, gate, control, client_factory)

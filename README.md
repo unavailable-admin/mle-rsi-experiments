@@ -2,7 +2,7 @@
 
 新实现位于 `src/mle_rsi/`，Dream-RSI 是唯一的 submodule。旧实验代码和入口归档在 `legacy/`，仅供审计；已有实验继续使用自己的冻结代码，不能用本版本原地恢复旧 campaign。
 
-[设计草案](docs/rsi-agent-mle-architecture-design.md) · [实施覆盖与验收](docs/platform-implementation.md)
+[设计草案](docs/rsi-agent-mle-architecture-design.md) · [第一阶段实施记录](docs/platform-implementation.md) · [第二阶段实现与验收进度](docs/phase2-implementation.md)
 
 ```text
 CLI → Controller → Dream-RSI Campaign
@@ -35,7 +35,7 @@ python3.12 -m venv .venv
 
 `run` 也用于恢复新格式运行。pause/stop 停止接收新批次及新的 offline 工作，在途批次排空；强制中断保留批次计划和外部证据。不同进程不能同时控制同一 run；不同主机控制同一 run 被拒绝。
 
-真实运行使用 `configs/experiments/mle-example.json` 和 `--host configs/hosts/example.json` 的本机副本。示例的服务地址、模型、价格、镜像和路径都是占位值，必须替换。当前 provider 针对兼容 chat API 加独立 billing API；不承诺兼容所有网关。认证值只从配置指定的环境变量读取，不写入发布记录或容器。
+真实运行使用 `configs/experiments/mle-example.json` 和 `--host configs/hosts/example.json` 的本机副本。示例的服务地址、模型、价格、镜像和路径都是占位值，必须替换。支持兼容 chat API 和 Gemini native generateContent，两者均需独立 billing API；不承诺兼容所有网关。认证值只从配置指定的环境变量读取，不写入发布记录或容器。
 
 初始化固定代码、配置、public 数据、验证划分和镜像身份；真实初始化要求两个仓库均为干净提交。主机需要已准备的候选环境、官方 mlebench 环境、Sysbox Docker 镜像及只读依赖挂载。GPU 还需显式 `gpu_config_dir`，内含对应 Sysbox GPU 配置。物理核只列一个逻辑 CPU，资源租约同时保护其兄弟线程。AFS 如需映射输出 UID，配置 `container_output_uid` / `container_output_gid`；仅修改新执行输出的所有者。
 
@@ -53,7 +53,23 @@ APTOS/Cactus 三折通过任务 `validation: "kfold"` 开启；APTOS 总时限�
 
 每题额度用 `--task TASK` 指定。总额度与每题额度分别约束；增加其中一个不会绕过另一个。相同 `--id` 重复执行不会重复增加额度。
 
-`offline_tier` 支持 baseline/light/max，实际调参和反事实次数通过状态输出汇总。单独 offline refresh、旧数据库导入和分叉不属于本版本的恢复入口。
+`offline_tier` 支持 baseline/light/max，实际调参和反事实次数通过状态输出汇总。独立 offline refresh 在现有公开历史上更新策略；历史导入只进入新 campaign，并校验数据和验证协议、继承费用、生成新 namespace。回退通过导出完整轮次前缀后分叉实现。
+
+## Web、工作流与历史
+
+```bash
+.venv/bin/mle-rsi serve --run-dir RUN --bind 127.0.0.1 --port 8080
+.venv/bin/mle-rsi refresh --run-dir RUN --id refresh-001
+.venv/bin/mle-rsi export --run-dir RUN --task TASK --output NEW_BUNDLE
+.venv/bin/mle-rsi import --run-dir NEW_RUN --task TASK --bundle NEW_BUNDLE
+.venv/bin/mle-rsi workflow --config WORKFLOW_JSON --run-dir NEW_WORKFLOW
+```
+
+Web 使用启动时生成的访问令牌，提供候选树、源码、公开诊断、产物、资源、费用和后台操作。工作流通过阶段依赖、门槛和历史继承声明 development/final 流程；`task_parallelism` 控制题目并发。
+
+D09 修复/探索/fallback 与 D10 AST 去重均为显式可选项，默认关闭。策略规则编入同一份源码供 online、replay 和 tuning 使用。特征缓存也需显式开启，候选只读共享缓存、宿主校验发布；调用方负责声明确定性变换的完整依赖。配置与边界见第二阶段文档。
+
+历史运维脚本在 `legacy/ops-5090/`，实验记录在 `docs/archive/pre-platform/`。这些资料保留原始路径叙述，仅供历史审计，不是当前运行入口。
 
 ## 验证
 

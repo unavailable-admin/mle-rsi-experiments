@@ -55,6 +55,13 @@ def worker(request):
            (output,Path('/output'),False),(root/'runtime',Path('/runtime'),True),
            (prepared/'manifest.json',Path('/validation/manifest.json'),True)]
     if manifest.get('split_file'):pairs.append((prepared/'split.csv',Path('/validation/split.csv'),True))
+    cache = read(directory/'task.json').get('feature_cache')
+    if cache:
+        from .feature_cache import directory as cache_directory
+        cache_root = cache_directory(root, task)
+        cache_root.mkdir(parents=True, exist_ok=True)
+        readable(cache_root)
+        pairs.append((cache_root, Path(cache['read_dir']), True))
     for target,source in manifest.get('data_overrides',{}).items():pairs.append((prepared/source,Path('/data')/target,True))
     for source in host.get('python_extra_mounts',[]):pairs.append((Path(source),Path(source),True))
     for key,target in [('pretrained_models','/models/pretrained'),('torch_cache','/models/torch')]:

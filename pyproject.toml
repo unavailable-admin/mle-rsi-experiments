@@ -18,3 +18,6 @@ where = ["src"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+
+[tool.setuptools.package-data]
+mle_rsi = ["web_assets/*.html", "web_assets/*.js", "web_assets/*.css"]

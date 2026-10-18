@@ -10,7 +10,7 @@ from .config import validate
 from .io import read,write,lock
 from .ledger import Ledger
 from .resources import ResourcePool
-from .provider import ModelService
+from .provider import model_service
 from .backend import assemble
 from .grading import grade
 from . import tasks,release,runtime
@@ -64,7 +64,7 @@ async def run(root):
         raise ValueError('Configured CPUs unavailable')
     with lock(str(root/'controller')):
         ledger=Ledger(root,spec.get('budget',{}))
-        pool=ResourcePool(spec['host'],mock=spec['mode']=='mock')
+        pool=ResourcePool(spec['host'],mock=spec['mode']=='mock',status_path=root/'resources.json')
         gate=asyncio.Semaphore(spec['api_parallelism']);ctl=Control(root)
         control(root,'run')
         loop=asyncio.get_running_loop()
@@ -80,7 +80,7 @@ async def run(root):
             if path.exists() and read(path).get('state')=='retired':return
             service=None
             if spec['mode']=='real':
-                service=ModelService(root,task['id'],ledger,{**spec['provider'],'model':spec['model']},gate,ctl)
+                service=model_service(root,task['id'],ledger,{**spec['provider'],'model':spec['model']},gate,ctl)
             campaign=None
             try:
                 await ctl.check('task_start')
@@ -114,10 +114,52 @@ async def run(root):
                     'summary':campaign.summary() if campaign else None})
             finally:
                 if campaign:campaign.close()
+        task_gate = asyncio.Semaphore(spec.get('task_parallelism', len(spec['tasks'])))
+        async def scheduled(task):
+            async with task_gate:
+                await task_loop(task)
         try:
-            await asyncio.gather(*(task_loop(t) for t in spec['tasks']))
+            await asyncio.gather(*(scheduled(t) for t in spec['tasks']))
         finally:
             for sig in installed:loop.remove_signal_handler(sig)
             ledger.close()
         blocked=[p.stem for p in (root/'status').glob('*.json') if read(p)['state']=='blocked']
         if blocked:raise RuntimeError('Blocked tasks: '+', '.join(blocked))
+
+
+async def refresh(root, refresh_id, task_id=None):
+    """Run only Dream-RSI offline work against existing frozen public history."""
+    root = Path(root).resolve()
+    spec = validate(read(root / 'config.json'))
+    release.verify(root, spec)
+    selected = [t for t in spec['tasks'] if t['id'] not in spec.get('excluded_tasks', []) and (task_id is None or t['id'] == task_id)]
+    if not selected:
+        raise ValueError('No eligible task selected')
+    with lock(str(root / 'controller')):
+        ledger = Ledger(root, spec.get('budget', {}))
+        pool = ResourcePool(spec['host'], mock=spec['mode'] == 'mock', status_path=root/'resources.json')
+        gate = asyncio.Semaphore(spec['api_parallelism'])
+        ctl = Control(root)
+        control(root, 'run')
+        async def refresh_task(task):
+            service = model_service(root, task['id'], ledger, {**spec.get('provider', {}), 'model': spec.get('model', {})}, gate, ctl) if spec['mode'] == 'real' else None
+            campaign = assemble(root, task, spec, ledger, pool, service, ctl)
+            path = root / 'status' / (task['id'] + '.json')
+            prior = read(path) if path.exists() else {'task': task['id']}
+            write(path, {**prior, 'state': 'refreshing', 'refresh_id': refresh_id})
+            try:
+                receipt = await campaign.refresh(refresh_id)
+                write(path, {**prior, 'refresh_id': refresh_id, 'refresh_status': receipt['refresh_status'], 'summary': campaign.summary()})
+            except BaseException as exc:
+                write(path, {**prior, 'state': 'stopped' if isinstance(exc, AgentStopped) else 'blocked',
+                             'refresh_id': refresh_id, 'error': str(exc), 'summary': campaign.summary()})
+                raise
+            finally:
+                campaign.close()
+        try:
+            outcomes = await asyncio.gather(*(refresh_task(t) for t in selected), return_exceptions=True)
+            failures = [x for x in outcomes if isinstance(x, BaseException)]
+            if failures:
+                raise failures[0]
+        finally:
+            ledger.close()
