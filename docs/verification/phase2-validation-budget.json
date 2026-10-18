@@ -1,0 +1,302 @@
+{
+  "limit_seconds": 3600,
+  "used_seconds": 1257.4206887393957,
+  "runs": [
+    {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "third_party/dream-rsi/my_rsi/tests/test_optional_rules.py",
+        "-q",
+        "--tb=short"
+      ],
+      "seconds": 5.729,
+      "returncode": 0
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "third_party/dream-rsi/my_rsi/tests/test_offline_refresh.py",
+        "tests/unit/test_feature_cache.py",
+        "tests/unit/test_gemini_provider.py",
+        "-q",
+        "--tb=short"
+      ],
+      "seconds": 5.484,
+      "returncode": 0
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/integration/test_migration.py",
+        "-q",
+        "--tb=short"
+      ],
+      "seconds": 10.139,
+      "returncode": 1
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/integration/test_migration.py",
+        "-q",
+        "--tb=short"
+      ],
+      "seconds": 10.237,
+      "returncode": 0
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/integration/test_workflow_web.py",
+        "tests/unit/test_resources_process.py",
+        "-q",
+        "--tb=short"
+      ],
+      "seconds": 12.939,
+      "returncode": 1
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pip",
+        "install",
+        "playwright"
+      ],
+      "seconds": 154.109,
+      "returncode": 0
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "tests",
+        "third_party/dream-rsi/my_rsi/tests/test_optional_rules.py",
+        "third_party/dream-rsi/my_rsi/tests/test_offline_refresh.py",
+        "third_party/dream-rsi/my_rsi/tests/test_external_backend.py",
+        "third_party/dream-rsi/my_rsi/tests/test_external_transport.py",
+        "third_party/dream-rsi/my_rsi/tests/test_batch_recovery.py",
+        "third_party/dream-rsi/my_rsi/tests/test_agent_control.py",
+        "-q",
+        "--tb=short",
+        "--junitxml=/tmp/mle-platform-phase2-targeted.xml"
+      ],
+      "seconds": 33.118,
+      "returncode": 0
+    },
+    {
+      "command": [
+        "timeout",
+        "600",
+        ".venv/bin/python",
+        "-m",
+        "playwright",
+        "install",
+        "chromium",
+        "--only-shell"
+      ],
+      "seconds": 130.172,
+      "returncode": 0
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/integration/test_migration.py",
+        "tests/integration/test_workflow_web.py",
+        "-q",
+        "--tb=short"
+      ],
+      "seconds": 20.399,
+      "returncode": 0
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/integration/test_browser.py",
+        "-q",
+        "--tb=short"
+      ],
+      "seconds": 8.885,
+      "returncode": 1
+    },
+    {
+      "command": [
+        "timeout",
+        "120",
+        "apt-get",
+        "download",
+        "libgbm1",
+        "libasound2t64"
+      ],
+      "seconds": 2.667,
+      "returncode": 0
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/integration/test_browser.py",
+        "-q",
+        "--tb=short"
+      ],
+      "seconds": 9.736,
+      "returncode": 1
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/integration/test_browser.py",
+        "-q",
+        "--tb=short"
+      ],
+      "seconds": 8.236,
+      "returncode": 0
+    },
+    {
+      "command": [
+        "timeout",
+        "240",
+        ".venv/bin/python",
+        "-m",
+        "pip",
+        "install",
+        "pandas>=2,<3"
+      ],
+      "seconds": 93.192,
+      "returncode": 0
+    },
+    {
+      "command": [
+        "timeout",
+        "220",
+        ".venv/bin/python",
+        "/tmp/mle-real-providers.py"
+      ],
+      "seconds": 0.865,
+      "returncode": 1
+    },
+    {
+      "command": [
+        "timeout",
+        "220",
+        ".venv/bin/python",
+        "/tmp/mle-real-providers.py"
+      ],
+      "seconds": 4.019,
+      "returncode": 1
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "tests",
+        "third_party/dream-rsi/my_rsi/tests/test_optional_rules.py",
+        "third_party/dream-rsi/my_rsi/tests/test_offline_refresh.py",
+        "third_party/dream-rsi/my_rsi/tests/test_external_backend.py",
+        "third_party/dream-rsi/my_rsi/tests/test_external_transport.py",
+        "third_party/dream-rsi/my_rsi/tests/test_batch_recovery.py",
+        "third_party/dream-rsi/my_rsi/tests/test_agent_control.py",
+        "-q",
+        "--tb=short",
+        "--junitxml=/tmp/mle-platform-phase2-regression.xml"
+      ],
+      "seconds": 36.115,
+      "returncode": 0
+    },
+    {
+      "command": [
+        "timeout",
+        "300",
+        ".venv/bin/python",
+        "/tmp/mle-real-leaf.py"
+      ],
+      "seconds": 90.273,
+      "returncode": 0
+    },
+    {
+      "command": [
+        "timeout",
+        "120",
+        ".venv/bin/python",
+        "/tmp/mle-gpu-smoke.py"
+      ],
+      "seconds": 23.991,
+      "returncode": 0
+    },
+    {
+      "command": [
+        "timeout",
+        "700",
+        ".venv/bin/python",
+        "/tmp/mle-clean-install.py"
+      ],
+      "seconds": 331.545,
+      "returncode": 0
+    },
+    {
+      "command": [
+        "timeout",
+        "240",
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "third_party/dream-rsi/my_rsi/tests/test_llm_discovery_campaign.py::test_mock_three_rounds_replay_equivalence_and_resume",
+        "third_party/dream-rsi/my_rsi/tests/test_llm_discovery_campaign.py::test_dreaming_crash_keeps_world_and_aggregate",
+        "third_party/dream-rsi/my_rsi/tests/test_tree_replay.py",
+        "third_party/dream-rsi/my_rsi/tests/test_persistent_replay.py",
+        "-q",
+        "--tb=short",
+        "--junitxml=/tmp/mle-platform-phase2-native.xml"
+      ],
+      "seconds": 225.273,
+      "returncode": 0
+    },
+    {
+      "command": [
+        "timeout",
+        "120",
+        ".venv/bin/python",
+        "/tmp/mle-real-migration.py"
+      ],
+      "seconds": 19.336,
+      "returncode": 1
+    },
+    {
+      "command": [
+        "timeout",
+        "120",
+        ".venv/bin/python",
+        "/tmp/mle-real-migration.py"
+      ],
+      "seconds": 20.037,
+      "returncode": 0
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "/tmp/mle-phase2-audit.py"
+      ],
+      "seconds": 0.923,
+      "returncode": 0
+    }
+  ]
+}
