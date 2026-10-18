@@ -74,6 +74,7 @@ D09 修复/探索/fallback 与 D10 AST 去重均为显式可选项，默认关�
 ## 验证
 
 ```bash
+.venv/bin/pip install -e 'third_party/dream-rsi/my_rsi[test]'
 .venv/bin/python -m pytest tests
 .venv/bin/python -m pytest third_party/dream-rsi/my_rsi/tests/test_external_backend.py third_party/dream-rsi/my_rsi/tests/test_external_transport.py third_party/dream-rsi/my_rsi/tests/test_batch_recovery.py third_party/dream-rsi/my_rsi/tests/test_agent_control.py
 ```

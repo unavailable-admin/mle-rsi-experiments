@@ -1,5 +1,7 @@
 # 平台首版实施记录
 
+> 本文是第一阶段的历史验收快照，其中“后置”和“未验证”描述仅对应当时状态。第二阶段的完成情况与限制见 [第二阶段实施与验收](phase2-implementation.md)。
+
 日期：2026-10-18。对应设计：[架构草案](rsi-agent-mle-architecture-design.md)。
 
 实现目录：`/mnt/afs/yangsen1/projects/mle-rsi-platform`。MLE 分支 `platform-v1`；其 Dream-RSI 分支 `external-agent-v1` 从固定 main `3ccf88a209604795f75ec2e0f2f40352dc80b620` 开始。原开发工作区及实验冻结源码不修改。两个仓库分别提交，未推送或部署。

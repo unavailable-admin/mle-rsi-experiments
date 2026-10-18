@@ -52,3 +52,27 @@ Web 默认仅监听 localhost，启动时输出独立访问令牌。浏览器页
 ## 验证
 
 计时记录位于本机 `runs/phase2-validation-budget.json`，每项运行记录耗时和退出状态。最终验收摘要将在完成后固定到 `docs/verification/`。中间失败与修复后的通过结果都会保留；不以中断或未运行的用例充当通过。
+
+## 第二阶段追踪对应
+
+| 原编号 | 本阶段覆盖 |
+|---|---|
+| C02 / D02 / D04 / M08–M09 | Gemini 适配与原有请求、账本恢复共用实现 |
+| C04、C23 / D11 / M09、M11 | 单机历史导出、导入、继承、前缀回退分叉；跨机控制不在范围内 |
+| C08 / D09 | 有界修复、探索、best-first、fallback；默认关闭 |
+| C09 / D10 / M02 | AST 去重和有界再生成；任务 instructions 表达实验角色约束 |
+| C11 / D12 / M01、M12 | 独立 refresh；保留既有 baseline/light/max，不做收益调优 |
+| C21 / M01、M05、M07 | 确定性数值特征缓存 |
+| C24 / D05、D08 / M12 | 认证 Web、树/源码/产物、资源/账本与控制操作 |
+| M01、M03 / 历史运维 | task_parallelism 队列、guarded workflow 和历史目录归档 |
+
+配置样例：`configs/experiments/optional-features.json`、`gemini-example.json` 和 `configs/workflows/guarded-mock.json`。真实样例中的模型、服务、价格和宿主路径均需按实际环境配置。
+
+## 已执行验证（最终汇总前）
+
+- 定向回归：50 passed / 2 opt-in skipped，包含两个三折原生用例；XML 保存在 `/tmp/mle-platform-phase2-regression.xml`。
+- Chromium 实际页面：登录、候选源码、资源、追加额度、停止，1 passed，无页面脚本异常。宿主缺失浏览器依赖，已仅解包到 `/tmp/mle-browser-libs`，未修改系统安装。
+- 真实兼容 Chat API：成功响应并以独立账单结算 $0.00034117。
+- Leaf：真实模型生成一个类先验基线，容器执行和公开验证有效，官方 grader 接受提交，生成费用 $0.00568388。该基线只验证链路，不代表模型效果。
+- GPU 1：持有原实验租约与平台资源租约，执行 16 元素 CUDA 运算；容器公开评分、测量结算和已完成结果复用均通过。
+- Gemini：所选配置未提供 credential_file，且相应环境变量不可用；未发出真实 Gemini 请求。native 协议与实际费用恢复逻辑已有模拟传输测试，真实网关兼容性仍是验证限制。
