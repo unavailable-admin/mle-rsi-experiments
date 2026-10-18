@@ -4,6 +4,8 @@
 
 [设计草案](docs/rsi-agent-mle-architecture-design.md) · [第一阶段实施记录](docs/platform-implementation.md) · [第二阶段实现与验收进度](docs/phase2-implementation.md)
 
+[重构归属、接口与搜索流程分析](docs/rsi-agent-refactor-and-search-analysis.md)：通用 RSI 与 MLE 修改清单、候选与反馈字段、上下文管理，以及 online/offline 流程图。
+
 ```text
 CLI → Controller → Dream-RSI Campaign
                        │ 候选
