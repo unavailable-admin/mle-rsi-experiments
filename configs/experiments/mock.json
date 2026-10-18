@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "mode": "mock",
+  "tasks": [{"id": "fixture-a"}, {"id": "fixture-b"}, {"id": "excluded"}],
+  "excluded_tasks": ["excluded"],
+  "host": {"cpus": [0, 1], "gpus": []},
+  "rounds": 1,
+  "batches": 2,
+  "batch_size": 2,
+  "api_parallelism": 2,
+  "offline_tier": "baseline",
+  "search": {"M": 2, "replay_scenarios": 1, "scheduling_betas": [0.5], "policy_decision_timeout_s": 5},
+  "budget": {"total": {"api_usd": 1, "execution_seconds": 1000, "gpu_seconds": 0}}
+}

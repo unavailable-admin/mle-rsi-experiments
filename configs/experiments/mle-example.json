@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "mode": "real",
+  "tasks": [{"id": "spooky-author-identification", "public_dir": "/data/mlebench/spooky-author-identification/prepared/public", "cores": 8, "gpu_cores": 4, "gpu": false, "timeout_seconds": 900, "validation": "holdout"}],
+  "rounds": 20,
+  "batches": 5,
+  "batch_size": 5,
+  "api_parallelism": 5,
+  "offline_tier": "baseline",
+  "model": {"provider": "openai-compatible", "base_url": "https://your-gateway.example", "model": "your-model", "api_key_env": "RSI_GPT_API_KEY", "context_tokens": 128000, "max_output_tokens": 8192, "temperature": null, "timeout_attempts": 1},
+  "provider": {"continue_on_504": false, "reservation_rates": {"input_usd_per_million": 10, "output_usd_per_million": 100}},
+  "budget": {"total": {"api_usd": 10, "execution_seconds": 100000, "gpu_seconds": 0}, "tasks": {"spooky-author-identification": {"api_usd": 10, "execution_seconds": 100000}}}
+}

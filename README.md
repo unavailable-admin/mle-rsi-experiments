@@ -1,132 +1,67 @@
-# Dream-RSI × MLE-bench
+# MLE RSI Platform
 
-**2026-10-17 最新交接入口：[HANDOFF.md](HANDOFF.md)。后续统一在本仓库的 `bug-fix` 分支开发；最新实验采用逐题独立续跑，仅 Cactus 从 R1 改用固定三折验证；运行状态以交接文档和实验网页为准。**
+新实现位于 `src/mle_rsi/`，Dream-RSI 是唯一的 submodule。旧实验代码和入口归档在 `legacy/`，仅供审计；已有实验继续使用自己的冻结代码，不能用本版本原地恢复旧 campaign。
 
-混合调度、获牌退出、跨机器安装和手动切换入口见 [新调度说明](docs/mixed-scheduling-medal-retirement.md)。
+[设计草案](docs/rsi-agent-mle-architecture-design.md) · [实施覆盖与验收](docs/platform-implementation.md)
 
-总目标：在 MLE-bench 上超过 HMA、达到 SOTA；短期目标：Lite22 SOTA。当前准备的新入口是[半机 Lite22 连续逐轮实验](docs/lite22-rounds.md)，带网页暂停/继续、跨题共享资源和每轮成绩。
+```text
+CLI → Controller → Dream-RSI Campaign
+                       │ 候选
+                       ▼
+                 MLE 执行后端
+                 资源池 → 容器
+                       │ 产物
+                       ▼
+                 Public 验证 ── 分数/诊断返回 Campaign
 
-主仓库的 `main` 保留原发布版本；当前整合开发入口以本页顶部交接文档为准。历史实验由 tag 固定；不要用 main 的新代码覆盖正在运行的冻结副本。
-
-| 版本 | 用途 |
-|---|---|
-| `guarded-lite22-12of22-20261014` | 实测 **22/22 有效、12/22 得牌（54.5%）** 的准确运行源码与实际配置 |
-| `spooky-solver-500-ready-v1` | 单题 500 候选准备版，题内串行 |
-| `spooky-solver-500-ready-v2` | 单题 500 候选并发版，5 路 API + 5 路候选执行 |
-| `main` | 合并实验实现和原远端安装能力后的持续开发版本 |
-
-54.5% 是一次完整运行的观测值。重新调用模型生成候选，即使使用相同源码和配置，也不保证相同分数或奖牌数。准确版本和逐题结果见 [来源说明](docs/provenance.md) 与 [成绩记录](docs/guarded-lite22-result.json)。
-
-## 安装
-
-需要 Python 3.12、Linux、bwrap、Docker + Sysbox、已准备的 MLE-bench 数据和候选训练环境；GPU 任务还需要 NVIDIA 容器支持。仓库不自动下载数据或训练镜像。
-
-```bash
-git clone --recurse-submodules git@github.com:unavailable-admin/mle-rsi-experiments.git
-cd mle-rsi-experiments
-./scripts/bootstrap.sh
-export RSI_EVAL_WORKSPACE=/path/to/mle-workspace
-# 按所选模型导出 RSI_GPT_API_KEY 或 RSI_GEMINI_API_KEY。
+Controller 在完整轮次后取得 public 最优结果 → 官方 private 评分 → 继续/退役
 ```
 
-`.env.example` 是说明模板，不会自动加载。入口优先使用 `MLE_RSI_PYTHON`，否则使用仓库 `.venv/bin/python`；在原实验服务器兼容既有 controller 环境。配置内 `${RSI_EVAL_WORKSPACE}` 在读取新配置时展开，不修改已有运行配置。
+Controller 管理多题生命周期；Campaign 管理 online/offline。模型适配、账本、发布核验和状态展示支撑上述流程。默认保留原生搜索策略，未启用历史 forced repair、fallback 或 AST 去重。
 
-工作区需要 `projects/mle-bench`、`data/mlebench/<task>/prepared/public`、候选 Python 环境、`envs/mlebench` 官方评分环境及 `tools/python` 容器运行时。GPU 配置、Docker 镜像、环境路径和预训练模型缓存需要匹配本机。GPT 实验配置保留原服务器路径，迁移时复制成 `*.local.json` 修改；`configs/gemini-dev4-lite22.json` 保留可展开环境变量的通用示例。
+## 安装与运行
 
-## Guarded Lite22
-
-开发阶段：4 题，每题 4 轮 × 4 批 × 2 候选，轮间更新策略。最终阶段：冻结策略，在 22 题各新搜 2 批 × 2 候选，不进行 offline。最终 private 分数不回传搜索。
-
-在独立 checkout 使用准确历史版本复跑：
+需要 Python 3.12。两个 Python 包通过安装使用，不在导入时修改 `sys.path`。
 
 ```bash
-git checkout guarded-lite22-12of22-20261014
-git submodule update --init --recursive
-# 先按本机环境检查配置和可用 CPU/GPU。
-./experiment init --config configs/guarded-lite22-12of22.json --run-dir /path/to/new-run
-/path/to/controller/python -m mle_rsi.supervisor --run-dir /path/to/new-run
+python3.12 -m venv .venv
+.venv/bin/pip install -e third_party/dream-rsi/my_rsi -e .
+.venv/bin/mle-rsi init --config configs/experiments/mock.json --run-dir /path/to/new-verification-run
+.venv/bin/mle-rsi run --run-dir /path/to/new-verification-run
+.venv/bin/mle-rsi status --run-dir /path/to/new-verification-run
+.venv/bin/mle-rsi pause --run-dir /path/to/new-verification-run
+.venv/bin/mle-rsi stop --run-dir /path/to/new-verification-run
 ```
 
-该 tag 的配置记录实际 API 总上限 **$17.843318**（原合计 $20 已扣除 preceding firstbatch 消耗）；每任务 $5、开发每任务 $3。不要把历史“两个运行合计 $20”的约束误读成一个新运行会自动扣除另一个运行的账本。
+`run` 也用于恢复新格式运行。pause/stop 停止接收新批次及新的 offline 工作，在途批次排空；强制中断保留批次计划和外部证据。不同进程不能同时控制同一 run；不同主机控制同一 run 被拒绝。
 
-main/v2 也能使用 guarded 配置：该配置不设置题内并发，因此保留 API 和训练串行。修正后的提示词等与准确历史源码有差异，属于同方案复跑，不是逐字节复现。默认配置 `gpt-firstbatch-guarded-dev4-lite22.json` 的新运行上限为 $20；准确历史有效配置为 `guarded-lite22-12of22.json`。
+真实运行使用 `configs/experiments/mle-example.json` 和 `--host configs/hosts/example.json` 的本机副本。示例的服务地址、模型、价格、镜像和路径都是占位值，必须替换。当前 provider 针对兼容 chat API 加独立 billing API；不承诺兼容所有网关。认证值只从配置指定的环境变量读取，不写入发布记录或容器。
 
-## Spooky 单题
+初始化固定代码、配置、public 数据、验证划分和镜像身份；真实初始化要求两个仓库均为干净提交。主机需要已准备的候选环境、官方 mlebench 环境、Sysbox Docker 镜像及只读依赖挂载。GPU 还需显式 `gpu_config_dir`，内含对应 Sysbox GPU 配置。物理核只列一个逻辑 CPU，资源租约同时保护其兄弟线程。AFS 如需映射输出 UID，配置 `container_output_uid` / `container_output_gid`；仅修改新执行输出的所有者。
 
-20 轮 × 5 批 × 5 候选，累计 500 个候选名额，每轮 offline；跨轮继承全部树节点。搜索结束后直接测试 public 选出的检查点 solver/submission，不另开 final 搜索。5 路训练每路 8 CPU、32 GiB，总计 40 CPU、最多 160 GiB，无 GPU；CPU 锁覆盖物理核兄弟线程。
+APTOS/Cactus 三折通过任务 `validation: "kfold"` 开启；APTOS 总时限可配置为 3600 秒。不同验证协议使用独立新 run，不混排分数。宿主检查预测、划分和训练记录一致性，不能据此证明任意候选代码内部没有泄漏。
 
-当前服务器已固定的运行副本和启动命令见 [单题说明](SPOOKY_EXPERIMENT.md)。学习曲线端口 18768，原生树/代码/策略端口 18769；它们读取同一个运行目录。已有实验只能使用自身冻结源码恢复。
+## 预算与恢复
 
-## 验证与边界
+单一 SQLite 账本记录 API 美元、执行秒数和 GPU 分配秒数。训练、宿主 public 评分和官方评分分别保留测量与结算。未知调用保留预留，不盲目重发；显式允许的 504 跳过也不等于免费。容器和宿主进程缺少终态测量时运行阻塞，不假装已完成或重新执行。
 
-宿主固定 public 划分、独立重算预测分数并校验 submission。它不能单凭输出证明任意生成代码内部完全没有验证泄漏，需结合代码审计。各版本是组合改动和单次随机生成实验，得牌变化不能直接解释为单一改动的因果效果。
+追加额度有独立、幂等的审计记录，不改写旧费用，例如：
 
 ```bash
-/path/to/controller/python -m pytest tests/test_experiment.py tests/test_provider.py tests/test_first_batch.py tests/test_gpt_halfday.py tests/test_repair_guard.py tests/test_single_task.py tests/test_parallel_candidates.py tests/test_portable_setup.py
-/path/to/ml/python -m unittest discover -s tests -p 'test_*native.py'
+.venv/bin/mle-rsi budget-add --run-dir RUN --id extra-001 --dimension api_usd --amount 2 --reason 'Explicit budget extension'
 ```
 
-来源、固定 commit 和历史开发说明分别见 [provenance](docs/provenance.md) 和 [历史记录](docs/experiment-history.md)。
+每题额度用 `--task TASK` 指定。总额度与每题额度分别约束；增加其中一个不会绕过另一个。相同 `--id` 重复执行不会重复增加额度。
 
-### Spooky diversity trial and sequential queue
+`offline_tier` 支持 baseline/light/max，实际调参和反事实次数通过状态输出汇总。单独 offline refresh、旧数据库导入和分叉不属于本版本的恢复入口。
 
-The opt-in `configs/spooky-diversity-100.json` trial keeps the existing model,
-fixed public validation protocol and five eight-CPU lanes. It starts from a fresh
-root, runs 100 candidate slots (four rounds), and caps API accounting including
-pending reservations at USD6. It does not import earlier solvers or private grades.
-
-Python AST fingerprints reject exact/formatting/comment-only duplicates before
-training. One additional generation is allowed per slot; all calls are billed and
-recorded. A second rejected response consumes the slot without training. Literal
-and parameter changes are retained. This is not semantic equivalence checking:
-renaming and equivalent rewrites may still pass. Claims persist across batches
-and controller recovery, and concurrently generated duplicates cannot both claim
-the same fingerprint. A resumed claim from the same attempt is idempotent.
-
-Batch positions 0–2 request evidence-based improvement, position 3 requests a
-materially different approach, and position 4 requests hypothesis testing. Concrete
-error repair overrides the assigned role. These are explicit prompt roles, not
-proof that a candidate changes model family. Existing learned parent selection
-and offline policy evaluation remain intact. Method-family stagnation scheduling
-is deferred; this trial tests the smaller deduplication/role intervention first.
-`single-task status` includes a `diversity` audit with duplicate responses,
-skipped training, unique ASTs and role counts.
-
-Initialize a fresh run before starting its queue, then run:
+## 验证
 
 ```bash
-./single-task init --config configs/spooky-diversity-100.json --run-dir NEW_ROOT
-python -m mle_rsi.queue_single --after PREDECESSOR_ROOT --run-dir NEW_ROOT
+.venv/bin/python -m pytest tests
+.venv/bin/python -m pytest third_party/dream-rsi/my_rsi/tests/test_external_backend.py third_party/dream-rsi/my_rsi/tests/test_external_transport.py third_party/dream-rsi/my_rsi/tests/test_batch_recovery.py third_party/dream-rsi/my_rsi/tests/test_agent_control.py
 ```
 
-Use the configured Dream-RSI Python environment. The queue checks successful
-predecessor completion, the sealed candidate count and checkpoint hashes, and
-release of the predecessor controller lock. The new controller also takes the
-normal physical-CPU sibling leases. A predecessor failure blocks the queue;
-a launch receipt prevents duplicate launches or silent retries. Status lives in
-`queue-status.json`, and execution output in `controller.log`. Keep this checkout
-separate from the running predecessor: frozen source identity checks remain active.
+三折原生 fixture 使用装有 pandas/sklearn/Pillow 的 ML Python 运行 `tests/unit/test_*native.py`。容器 fixture 为显式 opt-in，使用合成数据、模拟模型响应和账单，不使用真实 benchmark 数据或付费 API。它的本地主机参数见 `tests/integration/test_container_smoke.py`，不是通用部署配置。
 
-To continue a completed diversity run in a separate root, prepare a public-history
-extension, then explicitly start it:
-
-```bash
-python -m scripts.extend_spooky_public --source COMPLETED_ROOT --destination NEW_ROOT --target 200 --additional-api-cap 6
-./single-task run --run-dir NEW_ROOT
-```
-
-The extension preserves historical API charges and adds the requested allowance.
-It imports public search artifacts and policy history, excluding private grading
-results. The original run stays unchanged. Because the operator had already seen
-its private scores, this is an exploratory continuation, not an independent run.
-The preparer requires the source's frozen runtime; keep its checkout available.
-
-The October 15, 2026 run completed 200 candidates: private Log Loss **0.28661**
-(local MLE-bench bronze), versus 0.31410 at 100 and 0.28902 at 150. Total API
-charges were **$3.20759979**, including **$1.45031556** from the original 100.
-Selection used public validation; private grading ran after search completion.
-These are one-run observations, not a controlled estimate of the intervention.
-
-## Offline-max continuation
-
-For the 5090 round-four → 4090 half-machine experiment, see [offline-max commands and protocol](docs/offline-max.md). The source run must stop at the complete fourth-round boundary; the new run refreshes offline policies before admitting round five.
+迁入代码来源见 [NOTICE](NOTICE.md)。发布前固定 Dream-RSI gitlink；两个仓库的本地提交尚需分别推送，才可从远端完整克隆。

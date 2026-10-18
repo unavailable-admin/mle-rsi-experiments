@@ -1,0 +1,11 @@
+{
+  "cpus": [0,1,2,3,4,5,6,7],
+  "gpus": [],
+  "python_environment": "/opt/candidate-env",
+  "python_extra_mounts": [],
+  "image": "your-local-image@sha256:REPLACE_WITH_REAL_DIGEST",
+  "memory": "32g",
+  "grading_python": "/opt/mlebench-env/bin/python",
+  "data_dir": "/data/mlebench",
+  "runtime_inventory": {}
+}

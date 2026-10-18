@@ -1,0 +1,120 @@
+{
+  "date": "2026-10-18",
+  "scope": "Design first version: D01-D08 and D12; explicit optional/deferred work remains deferred.",
+  "dream": {
+    "baseline_main": "3ccf88a209604795f75ec2e0f2f40352dc80b620",
+    "commit": "50490788dc768eb72bf4c27eb64251f119e3d843",
+    "production": {
+      "modified": 14,
+      "added": 1,
+      "deleted": 0,
+      "insertions": 577,
+      "deletions": 212
+    },
+    "tests": {
+      "modified": 2,
+      "added": 4,
+      "deleted": 0,
+      "insertions": 351,
+      "deletions": 29
+    },
+    "total": {
+      "modified": 16,
+      "added": 5,
+      "deleted": 0,
+      "insertions": 928,
+      "deletions": 241
+    }
+  },
+  "mle": {
+    "branch": "platform-v1",
+    "baseline": "7f948d582d5600f07219a10f371d0b3ad5bf73bc",
+    "path": "/mnt/afs/yangsen1/projects/mle-rsi-platform"
+  },
+  "completed_test_suites": {
+    "mle": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "3",
+      "tests": "19",
+      "time": "9.356",
+      "timestamp": "2026-10-18T11:11:05.687179+00:00",
+      "hostname": "10-118-92-147",
+      "xml_sha256": "71fe03100e63899ec8f74232770c33461acf46fefc9820799ce751e9ade0607f"
+    },
+    "dream_core": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "97",
+      "time": "122.123",
+      "timestamp": "2026-10-18T11:18:03.355136+00:00",
+      "hostname": "10-118-92-147",
+      "xml_sha256": "6a14c58a47c7aea1b927df5fa1b6ab65d1705f2df3a6d7121dfc14f1a3a453b6"
+    },
+    "dream_timeout": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "17",
+      "time": "127.432",
+      "timestamp": "2026-10-18T11:17:41.198309+00:00",
+      "hostname": "10-118-92-147",
+      "xml_sha256": "11801bea45c683bb009b2d04ec126a40abcec913f1f5770684c41416d31da38f"
+    },
+    "real_cpu_container_fixture": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "1",
+      "time": "17.810",
+      "timestamp": "2026-10-18T11:07:54.482735+00:00",
+      "hostname": "10-118-92-147",
+      "xml_sha256": "f655b1c7966589533eb895489cd12151df17a50f825785d01205f49ec658e022"
+    }
+  },
+  "additional_checks": {
+    "native_protocol_tests": {
+      "passed": 2,
+      "python": "/mnt/afs/yangsen1/envs/mle-offline-max/bin/python"
+    },
+    "cli": {
+      "commands": [
+        "init",
+        "run",
+        "status"
+      ],
+      "completed_tasks": 2,
+      "excluded_tasks": 1
+    },
+    "original_workspace": {
+      "checked_files": 230,
+      "mismatches": 0
+    },
+    "live_frozen_code": {
+      "checked_files": 121,
+      "mismatches": 0
+    }
+  },
+  "interrupted_regression": {
+    "passed_before_interrupt": 103,
+    "exit_code": 2,
+    "reason": "Stopped broad native multi-round suite to limit cost; not a completed full-suite pass. Focused suites subsequently completed separately.",
+    "cleanup_warnings": "asyncio teardown warnings after SIGINT"
+  },
+  "superseded_run": {
+    "reason": "An earlier broad run encountered a source-fingerprint mismatch because source was edited during its run. Final verification held source fixed."
+  },
+  "limitations": [
+    "No full benchmark training or paid API generation",
+    "Container fixture uses synthetic data and mock API billing; real CPU execution and public scoring",
+    "Official grading wrapper not rerun against real private benchmark data",
+    "D09/D10/D11, standalone offline refresh, feature caching, second provider and full Web deferred",
+    "Commits local only; no push or deployment",
+    "No performance or medal-rate benefit claim"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "candidate_calls": 1,
+  "container_id": "8f3272377a84481556bf68b138b603516dddd347b8ad113cf20cace7f0d0801b",
+  "fixture_only": true,
+  "ledger": {
+    "entries": 2,
+    "totals": {
+      "api_usd": 0.001,
+      "execution_seconds": 2.9580449080094695,
+      "gpu_seconds": 0.0
+    },
+    "unsettled": []
+  },
+  "passed": true,
+  "raw_metric": 0.5
+}
