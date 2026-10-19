@@ -1,0 +1,27 @@
+{
+  "container_output_gid": 100000,
+  "container_output_uid": 100000,
+  "cpus": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "data_dir": "/mnt/afs/yangsen1/data/mlebench",
+  "gpu_config_dir": "/mnt/afs/yangsen1/runs/model-bundles/mle-platform-5090-20261019/gpu-configs",
+  "gpus": [
+    1
+  ],
+  "grading_python": "/mnt/afs/yangsen1/envs/mlebench/bin/python",
+  "image": "sha256:859eb2ba86a41e3a360e9d726a183147a20faa990bfd5f7f3e4f4372b375f00f",
+  "pretrained_models": "/mnt/afs/yangsen1/runs/model-bundles/mle-platform-5090-20261019/pretrained_models",
+  "python_environment": "/opt/mle-rsi-fixes/env",
+  "python_extra_mounts": [
+    "/mnt/afs/yangsen1/tools/python"
+  ],
+  "torch_cache": "/mnt/afs/yangsen1/runs/model-bundles/mle-platform-5090-20261019/torch_cache"
+}

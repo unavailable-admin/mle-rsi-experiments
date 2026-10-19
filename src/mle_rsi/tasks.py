@@ -88,11 +88,16 @@ Use only features available at prediction time. Removed post-outcome fields are
 not accessible in sanitized public inputs. Do not recover them from IDs or targets.
 Do not add training/test labels as features or fit on outer validation labels.
 The runtime inventory below lists actual installed versions and local weights.
-Use `model, transform = rt.load_resnet50()` for the available local ResNet50.
+When the verified inventory lists ResNet50, use `model, transform = rt.load_resnet50()`.
 It returns exactly TWO values; get the device with `next(model.parameters()).device`.
 It raises on missing/incompatible weights. Replace its fc for feature extraction
 or task-specific fine-tuning. No silent fallback: rt.report_model(name, device=...,
 checkpoint=..., fallback_reason=...) must record the actual approach and fallback.
+For a verified transformers bundle use `model, processor = rt.load_pretrained(path)`;
+path must exactly match an inventory model path. This applies tested compatibility
+options (including ModernBERT reference_compile=False), never downloads, and returns
+an image processor for SigLIP or tokenizer for text models. Follow the inventory's
+preprocessing notes. Choose MLE_RESOURCE='gpu' when using GPU inference or fine-tuning.
 Use rt.progress(stage, **details), for example rt.progress("fit", rows=len(train)),
 around expensive work. Only stage is positional; all details are keyword arguments.
 Use rt.remaining_seconds(reserve=45) to reserve time for full test prediction and writing outputs. Validate shapes on a

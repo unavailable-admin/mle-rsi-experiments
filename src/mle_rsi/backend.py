@@ -33,6 +33,16 @@ class MLEBackend:
         if spec.get('feature_cache', {}).get('enabled', False):
             self.task = replace(self.task, candidate_contract=self.task.candidate_contract + '\nOptional deterministic_features(name, builder, parameters=..., input_identity=...) in mle_runtime caches label-independent numeric preprocessing only; declare all input/weight/seed dependencies. Never cache trained models or validation-dependent state.')
 
+        if not self.mock:
+            from .inventory import prompt_inventory
+            inventory_path=self.root/'runtime/inventory.json'
+            inventory=read(inventory_path) if inventory_path.exists() else {}
+            self.task=replace(self.task,candidate_contract=self.task.candidate_contract+
+                '\nVERIFIED CANDIDATE ENVIRONMENT (missing entries are not verified):\n'+
+                json.dumps(prompt_inventory(inventory,self.task_id),ensure_ascii=False)+
+                '\nUse only listed local weights, with local_files_only=True. Never download. '
+                'Declare MLE_RESOURCE="gpu" to request a GPU for GPU models; task eligibility alone does not allocate it.')
+
     def fingerprint(self):
         return {'task':self.task_id,'validation':digest(self.manifest),'metric':self.metric,
                 'contract':digest(self.task.candidate_contract),'description':digest(self.task.objective_text),

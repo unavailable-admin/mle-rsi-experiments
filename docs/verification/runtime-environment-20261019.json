@@ -1,0 +1,669 @@
+{
+  "initialization_smoke": {
+    "inventory_in_candidate_prompt": true,
+    "paid_api_calls": 0,
+    "pretrained_subset": "ResNet50 CPU; all five GPU helpers checked separately",
+    "ready": true,
+    "release_verification_passed": true,
+    "run_dir": "/mnt/afs/yangsen1/projects/mle-rsi-platform/runs/environment-verification-20261019/initialized-fixture",
+    "synthetic_data": true,
+    "training_started": false
+  },
+  "inventory": {
+    "functional_checks": {
+      "audio_decode_spectrum": {
+        "status": "verified"
+      },
+      "english_russian_text_features": {
+        "status": "verified"
+      },
+      "image_features_restoration": {
+        "status": "verified"
+      },
+      "tabular_estimators": {
+        "status": "verified"
+      }
+    },
+    "hardware": {
+      "cuda_available": true,
+      "device": "NVIDIA GeForce RTX 5090",
+      "torch_cuda": "12.8"
+    },
+    "model_assets": {
+      "gpu_config_dir": {
+        "sysbox-gpu1.json": "460dfa9ef405a47f4875c7234032e06f9f12a4978bf071bcda8a68ed75f04e57"
+      },
+      "pretrained_models": {
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/.gitignore": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/1_Pooling/config.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/1_Pooling/config.json.metadata": "782c46700fb8fc98d1a42f4d1bac6d968ae86a5947e96ca7b1c4c5e6bbf1b54a",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/config.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/config.json.metadata": "b36ebc64a7cfa21023ec8d7bd72d28b78f1d7573136c81faeaa0d9d478311833",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/config_sentence_transformers.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/config_sentence_transformers.json.metadata": "6fdf368b250df148abbcebe733dcf8cd20afdce373ec73c5a9df04cb10d187d7",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/model.safetensors.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/model.safetensors.metadata": "04040fa03eeb6358a0a7a1691ec6cfedf0c5adad05ac6462e2700ed71a0e210d",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/modules.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/modules.json.metadata": "937ce75ff5e0c3c81f0e6637851c1d8e096d65dcde6a73336de7d6acc11b2705",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/sentence_bert_config.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/sentence_bert_config.json.metadata": "9f3958187136cceec2231eea28afa620cd6ea38262083281ec7d736763c07b22",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/special_tokens_map.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/special_tokens_map.json.metadata": "c2e8f24ed9fd60cf53a61f66cf63ae5fa7fb0b3cb1a271a786a4ebbd7e01f0cd",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/tokenizer.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/tokenizer.json.metadata": "362438dcc68ba534e61d79082ef7381d3b4ccb73368321a66f1c9fd6f4d91efa",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/tokenizer_config.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/tokenizer_config.json.metadata": "06c5895895f75df9a9fb84bebe3b0374d84ec21f1cb213332980903b25b6eeba",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/vocab.txt.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "BAAI/bge-base-en-v1.5/.cache/huggingface/download/vocab.txt.metadata": "e143dc32c2f4a8362fe8996e347713434c6bbf07f13cd83a9bb774821755fb7b",
+        "BAAI/bge-base-en-v1.5/1_Pooling/config.json": "c9bef85e8bbf4b2eab4941b3fb62bd33f88686748b478f2e264d256472d9643b",
+        "BAAI/bge-base-en-v1.5/config.json": "bc00af31a4a31b74040d73370aa83b62da34c90b75eb77bfa7db039d90abd591",
+        "BAAI/bge-base-en-v1.5/config_sentence_transformers.json": "940d5f50db195fa6e5e6a4f122c095f77880de259d74b14a65779ed48bdd7c56",
+        "BAAI/bge-base-en-v1.5/model.safetensors": "c7c1988aae201f80cf91a5dbbd5866409503b89dcaba877ca6dba7dd0a5167d7",
+        "BAAI/bge-base-en-v1.5/modules.json": "84e40c8e006c9b1d6c122e02cba9b02458120b5fb0c87b746c41e0207cf642cf",
+        "BAAI/bge-base-en-v1.5/sentence_bert_config.json": "84e39fda68ccbff05bfa723ae9c0e70e23e2ec373b76e0f8c6e71af72a693cbf",
+        "BAAI/bge-base-en-v1.5/special_tokens_map.json": "b6d346be366a7d1d48332dbc9fdf3bf8960b5d879522b7799ddba59e76237ee3",
+        "BAAI/bge-base-en-v1.5/tokenizer.json": "d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66",
+        "BAAI/bge-base-en-v1.5/tokenizer_config.json": "9261e7d79b44c8195c1cada2b453e55b00aeb81e907a6664974b4d7776172ab3",
+        "BAAI/bge-base-en-v1.5/vocab.txt": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3",
+        "answerdotai/ModernBERT-large/.cache/huggingface/.gitignore": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1",
+        "answerdotai/ModernBERT-large/.cache/huggingface/download/config.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "answerdotai/ModernBERT-large/.cache/huggingface/download/config.json.metadata": "d4ace3cd4d3bc99fc2cdd186803694a6951f403891bf732283d9d47e5701e501",
+        "answerdotai/ModernBERT-large/.cache/huggingface/download/model.safetensors.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "answerdotai/ModernBERT-large/.cache/huggingface/download/model.safetensors.metadata": "115d36ce7705994fdc0ed02e446e165d4963978fdf47d84360b85158b747a54c",
+        "answerdotai/ModernBERT-large/.cache/huggingface/download/special_tokens_map.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "answerdotai/ModernBERT-large/.cache/huggingface/download/special_tokens_map.json.metadata": "5c7e9fcac9952b4d01159bd0ee4501e256cc2bb6fe50b44524199fad13f6c04f",
+        "answerdotai/ModernBERT-large/.cache/huggingface/download/tokenizer.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "answerdotai/ModernBERT-large/.cache/huggingface/download/tokenizer.json.metadata": "2b9244db6452ea7d6601d98c039ccd827266a6799bceb85ab5cf2951c33bb85d",
+        "answerdotai/ModernBERT-large/.cache/huggingface/download/tokenizer_config.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "answerdotai/ModernBERT-large/.cache/huggingface/download/tokenizer_config.json.metadata": "9d07c3ab7ac99c88f1b9fda27714e293eddeccfb58105c69e63639e5ca5e6824",
+        "answerdotai/ModernBERT-large/config.json": "55dca68059e98f0debf8eb63ab355c451c65b1f5d90fdca4754113fdaadd2cca",
+        "answerdotai/ModernBERT-large/model.safetensors": "44510fec5d3a81a1877f225637b869495f18e55f6f23a09abb9be0acc030295f",
+        "answerdotai/ModernBERT-large/special_tokens_map.json": "ea97ecdbcc73713039d8d64dbb05e3689495c96657fbd9a18f5bed381be81049",
+        "answerdotai/ModernBERT-large/tokenizer.json": "9fd55248d51d33976b324fc11592e28071da7d41e0e9401dfb7082e30574b7b1",
+        "answerdotai/ModernBERT-large/tokenizer_config.json": "3cd2017ff46d0a527e5d39cae39272eccfa1f19bb9f89b05d166aab2e38354e2",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/.gitignore": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/download/config.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/download/config.json.metadata": "d96e51f8696ddf6cba82f4abd02dc317f2fe03057e7bdea183a4bfed7a226487",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/download/model.safetensors.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/download/model.safetensors.metadata": "abf10465ae8e8f4fe94f493385195931ed1de3127e0d701359a870f97b36daed",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/download/preprocessor_config.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/download/preprocessor_config.json.metadata": "bbc32d719760418ce2f7c756bf591d13f19b3f123622c8c8903f6fc0e305f815",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/download/special_tokens_map.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/download/special_tokens_map.json.metadata": "65ecb84a4f879b1d59bd3b7106823bfa16dbee6c4f64ac259db4e761054a85a8",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/download/tokenizer.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/download/tokenizer.json.metadata": "f3de8414dbe3030de90af37c7b3274de979ef8c453091841761c3e7d3b592984",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/download/tokenizer.model.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/download/tokenizer.model.metadata": "16beb0847a3e82b72fbeddd1eb9a62422fd6415fc7427c9529b1168265877adc",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/download/tokenizer_config.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "google/siglip2-so400m-patch16-256/.cache/huggingface/download/tokenizer_config.json.metadata": "c8f64a70bb903613637a874b8d508a2b4a342d1562dd47a1f0d33bcd33ae2530",
+        "google/siglip2-so400m-patch16-256/config.json": "13ee943037e446415ff6e7e406ecf79fd955f482f4ba5b437d3bc10fba7f1362",
+        "google/siglip2-so400m-patch16-256/model.safetensors": "810ddc85ac019e6b2738b9130ae3602e41eb093a848a297a0ad296ca1f39dc67",
+        "google/siglip2-so400m-patch16-256/preprocessor_config.json": "d14ba2ee3fd816f3de8abaddc31953565128eaf37c73ad4bed32101a98465aff",
+        "google/siglip2-so400m-patch16-256/special_tokens_map.json": "baec30ea10906f16adb8c18af7a34023002c1746542612b8b41c9f09e1351351",
+        "google/siglip2-so400m-patch16-256/tokenizer.json": "cb9140fae3ac5122c972d37adf83e1248471a38147ad76f8215c8872c6fd8322",
+        "google/siglip2-so400m-patch16-256/tokenizer.model": "61a7b147390c64585d6c3543dd6fc636906c9af3865a5548f27f31aee1d4c8e2",
+        "google/siglip2-so400m-patch16-256/tokenizer_config.json": "14afe629fe4959b9e0d51e1852b8d9f7ad074f90a1a7125a4fcdd17f06e78fc8",
+        "microsoft/deberta-v3-large/.cache/huggingface/.gitignore": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1",
+        "microsoft/deberta-v3-large/.cache/huggingface/download/config.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "microsoft/deberta-v3-large/.cache/huggingface/download/config.json.metadata": "1d3f7ba1084c08337b379239ba8292bfc348690c8170c3b0d52c3ba69f4b5e78",
+        "microsoft/deberta-v3-large/.cache/huggingface/download/generator_config.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "microsoft/deberta-v3-large/.cache/huggingface/download/generator_config.json.metadata": "4e61ff2e418e09da809d7efbac72aa3e0002ca91347bd30eaea14c8fef15fea5",
+        "microsoft/deberta-v3-large/.cache/huggingface/download/pytorch_model.bin.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "microsoft/deberta-v3-large/.cache/huggingface/download/pytorch_model.bin.metadata": "62bcc44ad0c9cfdcc9ffa8c6a8aa98ebcd8726af8949c27e885fab849263236f",
+        "microsoft/deberta-v3-large/.cache/huggingface/download/spm.model.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "microsoft/deberta-v3-large/.cache/huggingface/download/spm.model.metadata": "0f210e4441577f98ddfaa2141cf7f4c1e71ef10dda7e477446cfab879735be16",
+        "microsoft/deberta-v3-large/.cache/huggingface/download/tokenizer_config.json.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "microsoft/deberta-v3-large/.cache/huggingface/download/tokenizer_config.json.metadata": "d75a135448f9f373ea0c128ca72971854109df3c3c758e90955ab44172ef11f0",
+        "microsoft/deberta-v3-large/config.json": "ddec8b81d079d218ce9e54fc0af5d1d5937d6d53b5d42e70c1f251a1cebc830d",
+        "microsoft/deberta-v3-large/generator_config.json": "36956d8ce96c4a9f3acbb43501394c78756f75f491bb7288cff065ad7636e223",
+        "microsoft/deberta-v3-large/pytorch_model.bin": "dd5b5d93e2db101aaf281df0ea1216c07ad73620ff59c5b42dccac4bf2eef5b5",
+        "microsoft/deberta-v3-large/spm.model": "c679fbf93643d19aab7ee10c0b99e460bdbc02fedf34b92b05af343b4af586fd",
+        "microsoft/deberta-v3-large/tokenizer_config.json": "3f3978e0c036f2c2588cac34a6047cbb0af0b0dc1814254e291028529805496d"
+      },
+      "torch_cache": {
+        "hub/checkpoints/resnet50-0676ba61.pth": "0676ba61b6795bbe1773cffd859882e5e297624d384b6993f7c9e683e722fb8a"
+      }
+    },
+    "models": [
+      {
+        "device": "cuda",
+        "kind": "resnet50",
+        "loader": "mle_runtime.load_resnet50()",
+        "output_shape": [
+          1,
+          1000
+        ],
+        "path": "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+        "preprocessing": "RGB; resize 256, center crop 224; ImageNet mean/std",
+        "seconds": 1.1378482629079372,
+        "status": "verified"
+      },
+      {
+        "device": "cuda",
+        "kind": "transformers",
+        "load_kwargs": {},
+        "loader": "mle_runtime.load_pretrained(path) returns (model, tokenizer_or_image_processor)",
+        "model_type": "bert",
+        "output_shape": [
+          1,
+          6,
+          768
+        ],
+        "path": "/models/pretrained/BAAI/bge-base-en-v1.5",
+        "preprocessing": "Use the bundled tokenizer / AutoImageProcessor with local_files_only=True",
+        "seconds": 1.6517842200119048,
+        "status": "verified"
+      },
+      {
+        "device": "cuda",
+        "kind": "transformers",
+        "load_kwargs": {
+          "reference_compile": false
+        },
+        "loader": "mle_runtime.load_pretrained(path) returns (model, tokenizer_or_image_processor)",
+        "model_type": "modernbert",
+        "output_shape": [
+          1,
+          6,
+          1024
+        ],
+        "path": "/models/pretrained/answerdotai/ModernBERT-large",
+        "preprocessing": "Use the bundled tokenizer / AutoImageProcessor with local_files_only=True",
+        "seconds": 5.584392511984333,
+        "status": "verified"
+      },
+      {
+        "device": "cuda",
+        "kind": "transformers",
+        "load_kwargs": {},
+        "loader": "mle_runtime.load_pretrained(path) returns (model, tokenizer_or_image_processor)",
+        "model_type": "siglip",
+        "output_shape": [
+          1,
+          1152
+        ],
+        "path": "/models/pretrained/google/siglip2-so400m-patch16-256",
+        "preprocessing": "Use the bundled tokenizer / AutoImageProcessor with local_files_only=True",
+        "seconds": 12.704343506018631,
+        "status": "verified"
+      },
+      {
+        "device": "cuda",
+        "kind": "transformers",
+        "load_kwargs": {},
+        "loader": "mle_runtime.load_pretrained(path) returns (model, tokenizer_or_image_processor)",
+        "model_type": "deberta-v2",
+        "output_shape": [
+          1,
+          5,
+          1024
+        ],
+        "path": "/models/pretrained/microsoft/deberta-v3-large",
+        "preprocessing": "Use the bundled tokenizer / AutoImageProcessor with local_files_only=True",
+        "seconds": 5.011208988027647,
+        "status": "verified"
+      }
+    ],
+    "network_disabled": true,
+    "notes": [
+      "Only verified models are listed as usable. Unavailable packages are not installed in candidates.",
+      "Network disabled. No downloads or remote code. Validation is a tiny inference, not task-quality evidence.",
+      "LightGBM uses CPU; no audio or Russian normalization pretrained model is implied by English text weights."
+    ],
+    "packages": {
+      "PIL": {
+        "distribution": "Pillow",
+        "status": "available",
+        "version": "11.0.0"
+      },
+      "accelerate": {
+        "error": "ModuleNotFoundError: No module named 'accelerate'",
+        "status": "unavailable"
+      },
+      "catboost": {
+        "distribution": "catboost",
+        "status": "available",
+        "version": "1.2.8"
+      },
+      "cv2": {
+        "distribution": "opencv-python-headless",
+        "status": "available",
+        "version": "4.11.0.86"
+      },
+      "librosa": {
+        "distribution": "librosa",
+        "status": "available",
+        "version": "0.11.0"
+      },
+      "lightgbm": {
+        "distribution": "lightgbm",
+        "status": "available",
+        "version": "4.6.0"
+      },
+      "numpy": {
+        "distribution": "numpy",
+        "status": "available",
+        "version": "1.26.4"
+      },
+      "pandas": {
+        "distribution": "pandas",
+        "status": "available",
+        "version": "2.2.3"
+      },
+      "scipy": {
+        "distribution": "scipy",
+        "status": "available",
+        "version": "1.17.1"
+      },
+      "sentence_transformers": {
+        "distribution": "sentence-transformers",
+        "status": "available",
+        "version": "4.1.0"
+      },
+      "sentencepiece": {
+        "distribution": "sentencepiece",
+        "status": "available",
+        "version": "0.2.2"
+      },
+      "skimage": {
+        "distribution": "scikit-image",
+        "status": "available",
+        "version": "0.25.2"
+      },
+      "sklearn": {
+        "distribution": "scikit-learn",
+        "status": "available",
+        "version": "1.5.2"
+      },
+      "soundfile": {
+        "distribution": "soundfile",
+        "status": "available",
+        "version": "0.13.1"
+      },
+      "timm": {
+        "distribution": "timm",
+        "status": "available",
+        "version": "1.0.22"
+      },
+      "tokenizers": {
+        "distribution": "tokenizers",
+        "status": "available",
+        "version": "0.21.4"
+      },
+      "torch": {
+        "distribution": "torch",
+        "status": "available",
+        "version": "2.7.1+cu128"
+      },
+      "torchvision": {
+        "distribution": "torchvision",
+        "status": "available",
+        "version": "0.22.1+cu128"
+      },
+      "transformers": {
+        "distribution": "transformers",
+        "status": "available",
+        "version": "4.51.3"
+      },
+      "xgboost": {
+        "distribution": "xgboost",
+        "status": "available",
+        "version": "2.1.4"
+      }
+    },
+    "pretrained_directories": [
+      "/models/pretrained/BAAI/bge-base-en-v1.5",
+      "/models/pretrained/answerdotai/ModernBERT-large",
+      "/models/pretrained/google/siglip2-so400m-patch16-256",
+      "/models/pretrained/microsoft/deberta-v3-large"
+    ],
+    "python": "3.11.17",
+    "schema": 1,
+    "task_families": {
+      "aerial-cactus-identification": "vision_optional",
+      "aptos2019-blindness-detection": "vision",
+      "denoising-dirty-documents": "image_restoration",
+      "detecting-insults-in-social-commentary": "text",
+      "dog-breed-identification": "vision",
+      "dogs-vs-cats-redux-kernels-edition": "vision",
+      "histopathologic-cancer-detection": "vision",
+      "jigsaw-toxic-comment-classification-challenge": "text",
+      "leaf-classification": "descriptors_and_images",
+      "mlsp-2013-birds": "audio",
+      "new-york-city-taxi-fare-prediction": "tabular",
+      "nomad2018-predict-transparent-conductors": "tabular",
+      "plant-pathology-2020-fgvc7": "vision",
+      "random-acts-of-pizza": "text",
+      "ranzcr-clip-catheter-line-classification": "vision",
+      "siim-isic-melanoma-classification": "vision",
+      "spooky-author-identification": "text",
+      "tabular-playground-series-dec-2021": "tabular",
+      "tabular-playground-series-may-2022": "tabular",
+      "text-normalization-challenge-english-language": "normalization_english",
+      "text-normalization-challenge-russian-language": "normalization_russian",
+      "the-icml-2013-whale-challenge-right-whale-redux": "vision"
+    },
+    "task_readiness": {
+      "aerial-cactus-identification": {
+        "environment_check": "image_features_restoration",
+        "family": "vision_optional",
+        "pretrained_candidates": [
+          "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+          "/models/pretrained/google/siglip2-so400m-patch16-256"
+        ],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "aptos2019-blindness-detection": {
+        "environment_check": "image_features_restoration",
+        "family": "vision",
+        "pretrained_candidates": [
+          "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+          "/models/pretrained/google/siglip2-so400m-patch16-256"
+        ],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "denoising-dirty-documents": {
+        "environment_check": "image_features_restoration",
+        "family": "image_restoration",
+        "pretrained_candidates": [],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "detecting-insults-in-social-commentary": {
+        "environment_check": "english_russian_text_features",
+        "family": "text",
+        "pretrained_candidates": [
+          "/models/pretrained/BAAI/bge-base-en-v1.5",
+          "/models/pretrained/answerdotai/ModernBERT-large",
+          "/models/pretrained/microsoft/deberta-v3-large"
+        ],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "dog-breed-identification": {
+        "environment_check": "image_features_restoration",
+        "family": "vision",
+        "pretrained_candidates": [
+          "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+          "/models/pretrained/google/siglip2-so400m-patch16-256"
+        ],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "dogs-vs-cats-redux-kernels-edition": {
+        "environment_check": "image_features_restoration",
+        "family": "vision",
+        "pretrained_candidates": [
+          "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+          "/models/pretrained/google/siglip2-so400m-patch16-256"
+        ],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "histopathologic-cancer-detection": {
+        "environment_check": "image_features_restoration",
+        "family": "vision",
+        "pretrained_candidates": [
+          "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+          "/models/pretrained/google/siglip2-so400m-patch16-256"
+        ],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "jigsaw-toxic-comment-classification-challenge": {
+        "environment_check": "english_russian_text_features",
+        "family": "text",
+        "pretrained_candidates": [
+          "/models/pretrained/BAAI/bge-base-en-v1.5",
+          "/models/pretrained/answerdotai/ModernBERT-large",
+          "/models/pretrained/microsoft/deberta-v3-large"
+        ],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "leaf-classification": {
+        "environment_check": "image_features_restoration",
+        "family": "descriptors_and_images",
+        "pretrained_candidates": [
+          "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+          "/models/pretrained/google/siglip2-so400m-patch16-256"
+        ],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "mlsp-2013-birds": {
+        "environment_check": "audio_decode_spectrum",
+        "family": "audio",
+        "pretrained_candidates": [],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "new-york-city-taxi-fare-prediction": {
+        "environment_check": "tabular_estimators",
+        "family": "tabular",
+        "pretrained_candidates": [],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "nomad2018-predict-transparent-conductors": {
+        "environment_check": "tabular_estimators",
+        "family": "tabular",
+        "pretrained_candidates": [],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "plant-pathology-2020-fgvc7": {
+        "environment_check": "image_features_restoration",
+        "family": "vision",
+        "pretrained_candidates": [
+          "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+          "/models/pretrained/google/siglip2-so400m-patch16-256"
+        ],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "random-acts-of-pizza": {
+        "environment_check": "english_russian_text_features",
+        "family": "text",
+        "pretrained_candidates": [
+          "/models/pretrained/BAAI/bge-base-en-v1.5",
+          "/models/pretrained/answerdotai/ModernBERT-large",
+          "/models/pretrained/microsoft/deberta-v3-large"
+        ],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "ranzcr-clip-catheter-line-classification": {
+        "environment_check": "image_features_restoration",
+        "family": "vision",
+        "pretrained_candidates": [
+          "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+          "/models/pretrained/google/siglip2-so400m-patch16-256"
+        ],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "siim-isic-melanoma-classification": {
+        "environment_check": "image_features_restoration",
+        "family": "vision",
+        "pretrained_candidates": [
+          "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+          "/models/pretrained/google/siglip2-so400m-patch16-256"
+        ],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "spooky-author-identification": {
+        "environment_check": "english_russian_text_features",
+        "family": "text",
+        "pretrained_candidates": [
+          "/models/pretrained/BAAI/bge-base-en-v1.5",
+          "/models/pretrained/answerdotai/ModernBERT-large",
+          "/models/pretrained/microsoft/deberta-v3-large"
+        ],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "tabular-playground-series-dec-2021": {
+        "environment_check": "tabular_estimators",
+        "family": "tabular",
+        "pretrained_candidates": [],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "tabular-playground-series-may-2022": {
+        "environment_check": "tabular_estimators",
+        "family": "tabular",
+        "pretrained_candidates": [],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "text-normalization-challenge-english-language": {
+        "environment_check": "english_russian_text_features",
+        "family": "normalization_english",
+        "pretrained_candidates": [],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "text-normalization-challenge-russian-language": {
+        "environment_check": "english_russian_text_features",
+        "family": "normalization_russian",
+        "pretrained_candidates": [],
+        "status": "verified",
+        "task_quality_verified": false
+      },
+      "the-icml-2013-whale-challenge-right-whale-redux": {
+        "environment_check": "image_features_restoration",
+        "family": "vision",
+        "pretrained_candidates": [
+          "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+          "/models/pretrained/google/siglip2-so400m-patch16-256"
+        ],
+        "status": "verified",
+        "task_quality_verified": false
+      }
+    },
+    "torch_checkpoints": [
+      "/models/torch/hub/checkpoints/resnet50-0676ba61.pth"
+    ],
+    "verification": {
+      "image_id": "sha256:859eb2ba86a41e3a360e9d726a183147a20faa990bfd5f7f3e4f4372b375f00f",
+      "measurement": "/mnt/afs/yangsen1/runs/model-bundles/mle-platform-5090-20261019/verification/measurement/resources.json",
+      "network_disabled": true
+    }
+  },
+  "prepared_host_config": "/mnt/afs/yangsen1/runs/model-bundles/mle-platform-5090-20261019/host.json",
+  "probe_resources": {
+    "container_id": "4b6404b05575578f72d9e1cc298390b45d39ee21fbbf702b211f0023889d0601",
+    "cpu_affinity": [
+      0,
+      1
+    ],
+    "exit_code": 0,
+    "gpu": 1,
+    "gpu_allocated_seconds": 52.02832657902036,
+    "image_id": "sha256:859eb2ba86a41e3a360e9d726a183147a20faa990bfd5f7f3e4f4372b375f00f",
+    "measurement_notes": [
+      "Sampled cgroup CPU can miss the final tail; peaks can miss short transients.",
+      "Cgroup memory includes page cache; it differs from host process-tree RSS.",
+      "Container UID 0 is namespaced by Sysbox; host inputs are read-only."
+    ],
+    "memory_limit": "32g",
+    "network_disabled": true,
+    "runtime": "sysbox-runc",
+    "sampled_cpu_seconds": 35.101429,
+    "sampled_peak_cgroup_memory_bytes": 9589043200,
+    "sampled_peak_process_vram_bytes": 5641338880,
+    "samples": 26,
+    "shm_size": "4G",
+    "timed_out": false,
+    "wall_seconds": 52.02832657902036
+  },
+  "raw_evidence": "/mnt/afs/yangsen1/projects/mle-rsi-platform/runs/environment-verification-20261019",
+  "regression_tests": {
+    "explicit_container_smoke_passed": 1,
+    "passed": 50,
+    "skipped": 2,
+    "suite": "tests"
+  },
+  "runtime_helper_resources": {
+    "container_id": "1e1a8bf5c56349606d7ae08a56083894b40114579a7b6238ed4f5de82874fd9b",
+    "cpu_affinity": [
+      0,
+      1
+    ],
+    "exit_code": 0,
+    "gpu": 1,
+    "gpu_allocated_seconds": 32.19583960692398,
+    "image_id": "sha256:859eb2ba86a41e3a360e9d726a183147a20faa990bfd5f7f3e4f4372b375f00f",
+    "measurement_notes": [
+      "Sampled cgroup CPU can miss the final tail; peaks can miss short transients.",
+      "Cgroup memory includes page cache; it differs from host process-tree RSS.",
+      "Container UID 0 is namespaced by Sysbox; host inputs are read-only."
+    ],
+    "memory_limit": "32g",
+    "network_disabled": true,
+    "runtime": "sysbox-runc",
+    "sampled_cpu_seconds": 18.48272,
+    "sampled_peak_cgroup_memory_bytes": 10405822464,
+    "sampled_peak_process_vram_bytes": 5683281920,
+    "samples": 16,
+    "shm_size": "4G",
+    "timed_out": false,
+    "wall_seconds": 32.19583960692398
+  },
+  "runtime_helper_results": [
+    {
+      "device": "cuda:0",
+      "passed": true,
+      "path": "/models/torch/hub/checkpoints/resnet50-0676ba61.pth",
+      "shape": [
+        1,
+        1000
+      ]
+    },
+    {
+      "device": "cuda:0",
+      "passed": true,
+      "path": "/models/pretrained/BAAI/bge-base-en-v1.5",
+      "shape": [
+        1,
+        8,
+        768
+      ]
+    },
+    {
+      "device": "cuda:0",
+      "passed": true,
+      "path": "/models/pretrained/answerdotai/ModernBERT-large",
+      "shape": [
+        1,
+        7,
+        1024
+      ]
+    },
+    {
+      "device": "cuda:0",
+      "passed": true,
+      "path": "/models/pretrained/google/siglip2-so400m-patch16-256",
+      "shape": [
+        1,
+        1152
+      ]
+    },
+    {
+      "device": "cuda:0",
+      "passed": true,
+      "path": "/models/pretrained/microsoft/deberta-v3-large",
+      "shape": [
+        1,
+        6,
+        1024
+      ]
+    }
+  ],
+  "schema": 1,
+  "scope": "environment and offline model inference; no paid API or benchmark training"
+}

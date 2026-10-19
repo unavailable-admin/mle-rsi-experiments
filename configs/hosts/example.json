@@ -3,6 +3,8 @@
   "gpus": [],
   "python_environment": "/opt/candidate-env",
   "python_extra_mounts": [],
+  "torch_cache": "/opt/local-models/torch",
+  "pretrained_models": "/opt/local-models/pretrained",
   "image": "your-local-image@sha256:REPLACE_WITH_REAL_DIGEST",
   "memory": "32g",
   "grading_python": "/opt/mlebench-env/bin/python",

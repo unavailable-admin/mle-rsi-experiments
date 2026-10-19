@@ -9,6 +9,7 @@ def main():
     parser=argparse.ArgumentParser(prog='mle-rsi')
     sub=parser.add_subparsers(dest='command',required=True)
     init=sub.add_parser('init');init.add_argument('--config',required=True);init.add_argument('--host')
+    host=sub.add_parser('prepare-host');host.add_argument('--host',required=True);host.add_argument('--output-dir',required=True)
     init.add_argument('--run-dir',required=True)
     for name in ('run','status','stop','pause'):
         p=sub.add_parser(name);p.add_argument('--run-dir',required=True)
@@ -27,7 +28,11 @@ def main():
     budget.add_argument('--amount',required=True,type=float);budget.add_argument('--reason',required=True)
     budget.add_argument('--task',default='')
     args=parser.parse_args()
-    if args.command=='init':
+    if args.command=='prepare-host':
+        from .inventory import prepare_host
+        from .io import read
+        result=prepare_host(read(args.host),args.output_dir)
+    elif args.command=='init':
         result={'run':str(controller.initialize(args.run_dir,config.load(args.config,args.host))),'state':'initialized'}
     elif args.command=='budget-add':
         from .ledger import Ledger

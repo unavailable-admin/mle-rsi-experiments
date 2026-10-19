@@ -51,6 +51,8 @@ def freeze(root,spec):
            'versions':{'mle':git_identity(Path(__file__).parents[2]),
                        'dream':git_identity(Path(dream_rsi.__file__).parent)}}
     if spec['mode']=='real':
+        from .inventory import asset_identity
+        value['model_assets']=asset_identity(spec['host'])
         if any(v['dirty'] is not False for v in value['versions'].values()):
             raise ValueError('Real releases require clean committed code in both repositories')
         import docker
@@ -67,6 +69,8 @@ def verify(root,spec,check_data=True):
         raise ValueError('Frozen configuration, source or prepared assets changed')
     if check_data and value['data']!=data_identity(spec):raise ValueError('Public input data changed')
     if spec['mode']=='real':
+        from .inventory import asset_identity
+        if value.get('model_assets', {})!=asset_identity(spec['host']):raise ValueError('Frozen model assets changed')
         import docker
         with closing(docker.from_env()) as client:
             if client.images.get(spec['host']['image']).id!=value['image_id']:raise ValueError('Container image changed')

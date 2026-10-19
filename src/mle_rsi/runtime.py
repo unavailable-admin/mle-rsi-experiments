@@ -193,13 +193,31 @@ def _save_audit():
     (out/'runtime-audit.json').write_text(json.dumps({'events':_events},indent=2))
 
 
+def load_pretrained(path, device=None):
+    """Load only an offline-verified bundle with its tested compatibility options."""
+    import torch
+    from transformers import AutoModel, AutoTokenizer, AutoImageProcessor
+    inventory=json.loads(Path('/runtime/inventory.json').read_text())
+    matches=[m for m in inventory.get('models',[]) if m.get('path')==str(path)
+             and m.get('kind')=='transformers' and m.get('status')=='verified']
+    if len(matches)!=1:raise ValueError('Model is not in verified runtime inventory: '+str(path))
+    info=matches[0]
+    model=AutoModel.from_pretrained(path,local_files_only=True,**info.get('load_kwargs',{}))
+    device=device or ('cuda' if torch.cuda.is_available() else 'cpu')
+    model=model.to(device)
+    factory=AutoImageProcessor if 'siglip' in info.get('model_type','') else AutoTokenizer
+    processor=factory.from_pretrained(path,local_files_only=True)
+    report_model(info.get('model_type','pretrained'),device=device,checkpoint=str(path))
+    return model,processor
+
+
 def load_resnet50(device=None):
     """Load the available local checkpoint explicitly; never silently fallback."""
     import torch
     from torchvision.models import resnet50
     from torchvision import transforms
     inventory=json.loads(Path('/runtime/inventory.json').read_text())
-    paths=[p for p in inventory['torch_checkpoints'] if Path(p).name.startswith('resnet50-')]
+    paths=[p for p in inventory.get('torch_checkpoints',[]) if Path(p).name.startswith('resnet50-')]
     if not paths:raise FileNotFoundError('No ResNet50 in inventory; choose an explicit alternative and report_model(fallback_reason=...)')
     path=paths[0];model=resnet50(weights=None)
     state=torch.load(path,map_location='cpu',weights_only=True)

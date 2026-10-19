@@ -39,11 +39,13 @@ def initialize(root,spec):
     write(root/'config.json',spec)
     control(root,'stop')
     if spec['mode']=='real':
+        from .inventory import verify as verify_environment
+        inventory=verify_environment(spec['host'],root/'environment-verification')
         for task in spec['tasks']:
             if task['id'] not in spec.get('excluded_tasks',[]):tasks.prepare(root,task)
         destination=root/'runtime';destination.mkdir()
         shutil.copyfile(runtime.__file__,destination/'mle_runtime.py')
-        write(destination/'inventory.json',spec['host'].get('runtime_inventory',{}))
+        write(destination/'inventory.json',inventory)
         # Only new, run-owned inputs are made readable for mapped container UID.
         from .execute import readable
         for name in ('runtime','prepared'):

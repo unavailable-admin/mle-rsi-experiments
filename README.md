@@ -41,6 +41,8 @@ python3.12 -m venv .venv
 
 初始化固定代码、配置、public 数据、验证划分和镜像身份；真实初始化要求两个仓库均为干净提交。主机需要已准备的候选环境、官方 mlebench 环境、Sysbox Docker 镜像及只读依赖挂载。GPU 还需显式 `gpu_config_dir`，内含对应 Sysbox GPU 配置。物理核只列一个逻辑 CPU，资源租约同时保护其兄弟线程。AFS 如需映射输出 UID，配置 `container_output_uid` / `container_output_gid`；仅修改新执行输出的所有者。
 
+离线权重、实际环境清单和 GPU 配置的准备与验证见 [候选环境说明](docs/runtime-environment.md)。新 real 初始化先运行禁网环境探测；模型清单进入候选提示词，资产哈希随 release 固定。
+
 APTOS/Cactus 三折通过任务 `validation: "kfold"` 开启；APTOS 总时限可配置为 3600 秒。不同验证协议使用独立新 run，不混排分数。宿主检查预测、划分和训练记录一致性，不能据此证明任意候选代码内部没有泄漏。
 
 ## 预算与恢复
